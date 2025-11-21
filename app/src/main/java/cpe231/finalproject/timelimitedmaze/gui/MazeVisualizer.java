@@ -266,8 +266,9 @@ public final class MazeVisualizer {
       Raylib.DrawText(totalCost, panelX + 10, currentY, 20, Colors.BLUE);
       currentY += lineHeight;
 
-      long executionTimeMs = displayResult.endTimeMs() - displayResult.startTimeMs();
-      String executionTime = "Execution Time: " + executionTimeMs + " ms";
+      long executionTimeNs = displayResult.endTimeNs() - displayResult.startTimeNs();
+      double executionTimeMs = executionTimeNs / 1_000_000.0;
+      String executionTime = String.format("Execution Time: %.3f ms", executionTimeMs);
       Raylib.DrawText(executionTime, panelX + 10, currentY, 20, Colors.BLUE);
       currentY += lineHeight + 20;
     } else {
