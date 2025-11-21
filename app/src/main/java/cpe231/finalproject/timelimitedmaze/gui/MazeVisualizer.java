@@ -353,8 +353,7 @@ public final class MazeVisualizer {
       int totalOptionsHeight = options.length * DROPDOWN_OPTION_HEIGHT;
       int optionsStartY = y + DROPDOWN_HEIGHT;
 
-      int maxCoverageHeight = WINDOW_HEIGHT - optionsStartY;
-      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, maxCoverageHeight, Colors.WHITE);
+      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.WHITE);
       Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.DARKGRAY);
 
       for (int i = 0; i < options.length; i++) {
