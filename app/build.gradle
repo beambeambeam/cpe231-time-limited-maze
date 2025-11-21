@@ -23,6 +23,9 @@ dependencies {
 
     // This dependency is used by the application.
     implementation libs.guava
+
+    // Raylib Java bindings for GUI
+    implementation libs.jaylib
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -40,4 +43,11 @@ application {
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
+}
+
+tasks.named('run') {
+    // macOS requires GUI applications to run on the main thread
+    if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+        jvmArgs = ['-XstartOnFirstThread']
+    }
 }
