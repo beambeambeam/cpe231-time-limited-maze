@@ -231,10 +231,10 @@ public final class MazeVisualizer {
     int currentY = panelY;
 
     Raylib.DrawRectangle(panelX, 0, STATS_PANEL_WIDTH, WINDOW_HEIGHT,
-        Helpers.newColor((byte) 240, (byte) 240, (byte) 240, (byte) 255));
+        Helpers.newColor((byte) 35, (byte) 35, (byte) 40, (byte) 255));
 
     String title = "Solver Statistics";
-    Raylib.DrawText(title, panelX + 10, currentY, 24, Colors.BLACK);
+    Raylib.DrawText(title, panelX + 10, currentY, 24, Colors.WHITE);
     currentY += lineHeight + 10;
 
     int algorithmDropdownY = currentY;
@@ -249,11 +249,11 @@ public final class MazeVisualizer {
     }
 
     String mazeName = "Maze: " + maze.getName();
-    Raylib.DrawText(mazeName, panelX + 10, currentY, 18, Colors.DARKGRAY);
+    Raylib.DrawText(mazeName, panelX + 10, currentY, 18, Colors.LIGHTGRAY);
     currentY += lineHeight;
 
     String dimensions = String.format("Size: %d x %d", maze.getWidth(), maze.getHeight());
-    Raylib.DrawText(dimensions, panelX + 10, currentY, 18, Colors.DARKGRAY);
+    Raylib.DrawText(dimensions, panelX + 10, currentY, 18, Colors.LIGHTGRAY);
     currentY += lineHeight + 10;
 
     SolverResult displayResult = currentResult != null ? currentResult : result;
@@ -276,30 +276,30 @@ public final class MazeVisualizer {
     }
 
     String legend = "Legend:";
-    Raylib.DrawText(legend, panelX + 10, currentY, 18, Colors.BLACK);
+    Raylib.DrawText(legend, panelX + 10, currentY, 18, Colors.WHITE);
     currentY += lineHeight;
 
     int legendItemSize = 15;
     int legendX = panelX + 20;
 
     Raylib.DrawRectangle(legendX, currentY, legendItemSize, legendItemSize, Colors.GREEN);
-    Raylib.DrawText("Start", legendX + legendItemSize + 5, currentY, 16, Colors.BLACK);
+    Raylib.DrawText("Start", legendX + legendItemSize + 5, currentY, 16, Colors.WHITE);
     currentY += lineHeight;
 
     Raylib.DrawRectangle(legendX, currentY, legendItemSize, legendItemSize, Colors.RED);
-    Raylib.DrawText("Goal", legendX + legendItemSize + 5, currentY, 16, Colors.BLACK);
+    Raylib.DrawText("Goal", legendX + legendItemSize + 5, currentY, 16, Colors.WHITE);
     currentY += lineHeight;
 
     Raylib.DrawRectangle(legendX, currentY, legendItemSize, legendItemSize, Colors.BLUE);
-    Raylib.DrawText("Path", legendX + legendItemSize + 5, currentY, 16, Colors.BLACK);
+    Raylib.DrawText("Path", legendX + legendItemSize + 5, currentY, 16, Colors.WHITE);
     currentY += lineHeight;
 
     Raylib.DrawRectangle(legendX, currentY, legendItemSize, legendItemSize, Colors.DARKGRAY);
-    Raylib.DrawText("Wall", legendX + legendItemSize + 5, currentY, 16, Colors.BLACK);
+    Raylib.DrawText("Wall", legendX + legendItemSize + 5, currentY, 16, Colors.WHITE);
     currentY += lineHeight;
 
     Raylib.DrawRectangle(legendX, currentY, legendItemSize, legendItemSize, Colors.LIGHTGRAY);
-    Raylib.DrawText("Walkable", legendX + legendItemSize + 5, currentY, 16, Colors.BLACK);
+    Raylib.DrawText("Walkable", legendX + legendItemSize + 5, currentY, 16, Colors.WHITE);
     currentY += lineHeight + 10;
 
     ensureTextureLoaded();
@@ -337,30 +337,30 @@ public final class MazeVisualizer {
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, DROPDOWN_WIDTH, DROPDOWN_HEIGHT);
 
     Raylib.DrawRectangle((int) dropdownRect.x(), (int) dropdownRect.y(),
-        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.WHITE);
+        (int) dropdownRect.width(), (int) dropdownRect.height(), Helpers.newColor((byte) 50, (byte) 50, (byte) 55, (byte) 255));
     Raylib.DrawRectangleLines((int) dropdownRect.x(), (int) dropdownRect.y(),
-        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.DARKGRAY);
+        (int) dropdownRect.width(), (int) dropdownRect.height(), Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
 
-    Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.BLACK);
+    Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.WHITE);
 
     int arrowX = x + DROPDOWN_WIDTH - 20;
     int arrowY = y + DROPDOWN_HEIGHT / 2;
     if (isOpen) {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY - 5),
           Helpers.newVector2(arrowX + 10, arrowY - 5),
-          Helpers.newVector2(arrowX + 5, arrowY + 5), Colors.DARKGRAY);
+          Helpers.newVector2(arrowX + 5, arrowY + 5), Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
     } else {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY + 5),
           Helpers.newVector2(arrowX + 10, arrowY + 5),
-          Helpers.newVector2(arrowX + 5, arrowY - 5), Colors.DARKGRAY);
+          Helpers.newVector2(arrowX + 5, arrowY - 5), Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
     }
 
     if (isOpen) {
       int totalOptionsHeight = availableSolvers.size() * DROPDOWN_OPTION_HEIGHT;
       int optionsStartY = y + DROPDOWN_HEIGHT;
 
-      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.WHITE);
-      Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.DARKGRAY);
+      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Helpers.newColor((byte) 50, (byte) 50, (byte) 55, (byte) 255));
+      Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
 
       for (int i = 0; i < availableSolvers.size(); i++) {
         int optionY = optionsStartY + i * DROPDOWN_OPTION_HEIGHT;
@@ -371,11 +371,11 @@ public final class MazeVisualizer {
         if (isHovered) {
           Raylib.DrawRectangle((int) optionRect.x(), (int) optionRect.y(),
               (int) optionRect.width(), (int) optionRect.height(),
-              Helpers.newColor((byte) 220, (byte) 220, (byte) 220, (byte) 255));
+              Helpers.newColor((byte) 60, (byte) 60, (byte) 65, (byte) 255));
         }
 
         String optionText = availableSolvers.get(i).getAlgorithmName();
-        Raylib.DrawText(optionText, x + 5, optionY + 6, 16, Colors.BLACK);
+        Raylib.DrawText(optionText, x + 5, optionY + 6, 16, Colors.WHITE);
       }
     }
   }
@@ -447,30 +447,30 @@ public final class MazeVisualizer {
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, DROPDOWN_WIDTH, DROPDOWN_HEIGHT);
 
     Raylib.DrawRectangle((int) dropdownRect.x(), (int) dropdownRect.y(),
-        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.WHITE);
+        (int) dropdownRect.width(), (int) dropdownRect.height(), Helpers.newColor((byte) 50, (byte) 50, (byte) 55, (byte) 255));
     Raylib.DrawRectangleLines((int) dropdownRect.x(), (int) dropdownRect.y(),
-        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.DARKGRAY);
+        (int) dropdownRect.width(), (int) dropdownRect.height(), Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
 
-    Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.BLACK);
+    Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.WHITE);
 
     int arrowX = x + DROPDOWN_WIDTH - 20;
     int arrowY = y + DROPDOWN_HEIGHT / 2;
     if (isOpen) {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY - 5),
           Helpers.newVector2(arrowX + 10, arrowY - 5),
-          Helpers.newVector2(arrowX + 5, arrowY + 5), Colors.DARKGRAY);
+          Helpers.newVector2(arrowX + 5, arrowY + 5), Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
     } else {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY + 5),
           Helpers.newVector2(arrowX + 10, arrowY + 5),
-          Helpers.newVector2(arrowX + 5, arrowY - 5), Colors.DARKGRAY);
+          Helpers.newVector2(arrowX + 5, arrowY - 5), Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
     }
 
     if (isOpen) {
       int totalOptionsHeight = availableMazeFiles.size() * DROPDOWN_OPTION_HEIGHT;
       int optionsStartY = y + DROPDOWN_HEIGHT;
 
-      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.WHITE);
-      Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.DARKGRAY);
+      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Helpers.newColor((byte) 50, (byte) 50, (byte) 55, (byte) 255));
+      Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
 
       for (int i = 0; i < availableMazeFiles.size(); i++) {
         String fileName = availableMazeFiles.get(i);
@@ -484,15 +484,15 @@ public final class MazeVisualizer {
           if (isHovered) {
             Raylib.DrawRectangle((int) optionRect.x(), (int) optionRect.y(),
                 (int) optionRect.width(), (int) optionRect.height(),
-                Helpers.newColor((byte) 220, (byte) 220, (byte) 220, (byte) 255));
+                Helpers.newColor((byte) 60, (byte) 60, (byte) 65, (byte) 255));
           }
 
-          Raylib.DrawText(fileName, x + 5, optionY + 6, 16, Colors.BLACK);
+          Raylib.DrawText(fileName, x + 5, optionY + 6, 16, Colors.WHITE);
         } else {
           Raylib.DrawRectangle((int) optionRect.x(), (int) optionRect.y(),
               (int) optionRect.width(), (int) optionRect.height(),
-              Helpers.newColor((byte) 240, (byte) 240, (byte) 240, (byte) 255));
-          Raylib.DrawText(fileName, x + 5, optionY + 6, 16, Colors.GRAY);
+              Helpers.newColor((byte) 35, (byte) 35, (byte) 40, (byte) 255));
+          Raylib.DrawText(fileName, x + 5, optionY + 6, 16, Helpers.newColor((byte) 100, (byte) 100, (byte) 100, (byte) 255));
         }
       }
     }

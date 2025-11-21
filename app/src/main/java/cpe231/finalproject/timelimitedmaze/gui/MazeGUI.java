@@ -9,7 +9,7 @@ import cpe231.finalproject.timelimitedmaze.utils.MazeFileLister;
 import cpe231.finalproject.timelimitedmaze.utils.MazeValidator;
 import cpe231.finalproject.timelimitedmaze.utils.SolverRegistry;
 import com.raylib.Raylib;
-import com.raylib.Colors;
+import com.raylib.Helpers;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -70,7 +70,7 @@ public final class MazeGUI {
       handleMouseInput();
 
       Raylib.BeginDrawing();
-      Raylib.ClearBackground(Colors.RAYWHITE);
+      Raylib.ClearBackground(Helpers.newColor((byte) 20, (byte) 20, (byte) 20, (byte) 255));
 
       visualizer.render(availableSolvers, selectedSolverIndex, dropdownOpen, result, errorMessage,
           selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
