@@ -11,6 +11,6 @@ public final class App {
   public static void main(String[] args) {
     Maze maze = MazeStore.getMaze("m100_100.txt");
     MazeGUI gui = new MazeGUI(maze);
-    gui.show();
+      gui.show();
   }
 }

@@ -5,16 +5,26 @@ import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolvingException;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
+import cpe231.finalproject.timelimitedmaze.utils.MazeStore;
+import cpe231.finalproject.timelimitedmaze.utils.MazeFileLister;
+import cpe231.finalproject.timelimitedmaze.utils.MazeValidator;
 import com.raylib.Raylib;
 import com.raylib.Colors;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public final class MazeGUI {
-  private final Maze maze;
+  private Maze maze;
   private final MazeVisualizer visualizer;
   private WallFollowerSolver.WallSide selectedAlgorithm;
   private SolverResult result;
   private boolean dropdownOpen;
   private String errorMessage;
+  private String selectedMazeFileName;
+  private boolean mazeDropdownOpen;
+  private List<String> availableMazeFiles;
+  private Map<String, Boolean> mazeValidityMap;
 
   public MazeGUI(Maze maze) {
     this.maze = maze;
@@ -23,15 +33,21 @@ public final class MazeGUI {
     this.result = null;
     this.dropdownOpen = false;
     this.errorMessage = null;
+    this.selectedMazeFileName = maze.getName();
+    this.mazeDropdownOpen = false;
+    this.availableMazeFiles = MazeFileLister.listMazeFiles();
+    this.mazeValidityMap = new HashMap<>();
+    for (String fileName : availableMazeFiles) {
+      mazeValidityMap.put(fileName, MazeValidator.isValidMaze(fileName));
+    }
   }
 
   public void show() {
     int width = visualizer.getWindowWidth();
     int height = visualizer.getWindowHeight();
-    String title = "Maze Solver - " + maze.getName();
 
     System.out.println("Initializing GUI window: " + width + "x" + height);
-    Raylib.InitWindow(width, height, title);
+    Raylib.InitWindow(width, height, "Maze Solver");
 
     if (!Raylib.IsWindowReady()) {
       System.err.println("ERROR: Window failed to initialize!");
@@ -54,7 +70,8 @@ public final class MazeGUI {
       Raylib.BeginDrawing();
       Raylib.ClearBackground(Colors.RAYWHITE);
 
-      visualizer.render(selectedAlgorithm, dropdownOpen, result, errorMessage);
+      visualizer.render(selectedAlgorithm, dropdownOpen, result, errorMessage,
+          selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
 
       Raylib.EndDrawing();
     }
@@ -67,13 +84,16 @@ public final class MazeGUI {
     Raylib.Vector2 mousePos = Raylib.GetMousePosition();
 
     if (Raylib.IsMouseButtonPressed(Raylib.MOUSE_BUTTON_LEFT)) {
-      Integer clickedOption = visualizer.checkDropdownClick(mousePos, dropdownOpen);
+      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen);
+      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles,
+          mazeValidityMap);
 
-      if (clickedOption != null) {
-        if (clickedOption == -1) {
+      if (algorithmClicked != null) {
+        if (algorithmClicked == -1) {
           dropdownOpen = !dropdownOpen;
+          mazeDropdownOpen = false;
         } else {
-          WallFollowerSolver.WallSide newSelection = clickedOption == 0
+          WallFollowerSolver.WallSide newSelection = algorithmClicked == 0
               ? WallFollowerSolver.WallSide.LEFT
               : WallFollowerSolver.WallSide.RIGHT;
 
@@ -82,10 +102,42 @@ public final class MazeGUI {
             solveMaze();
           }
           dropdownOpen = false;
+          mazeDropdownOpen = false;
         }
-      } else if (dropdownOpen) {
-        dropdownOpen = false;
+      } else if (mazeClicked != null) {
+        if (mazeClicked == -1) {
+          mazeDropdownOpen = !mazeDropdownOpen;
+          dropdownOpen = false;
+        } else {
+          String selectedFileName = availableMazeFiles.get(mazeClicked);
+          if (mazeValidityMap.getOrDefault(selectedFileName, false)) {
+            loadMaze(selectedFileName);
+          }
+          mazeDropdownOpen = false;
+          dropdownOpen = false;
+        }
+      } else {
+        if (dropdownOpen || mazeDropdownOpen) {
+          dropdownOpen = false;
+          mazeDropdownOpen = false;
+        }
       }
+    }
+  }
+
+  private void loadMaze(String fileName) {
+    if (fileName.equals(selectedMazeFileName)) {
+      return;
+    }
+
+    selectedMazeFileName = fileName;
+    maze = MazeStore.getMaze(fileName);
+    visualizer.updateMaze(maze);
+    result = null;
+    errorMessage = null;
+
+    if (selectedAlgorithm != null) {
+      solveMaze();
     }
   }
 
