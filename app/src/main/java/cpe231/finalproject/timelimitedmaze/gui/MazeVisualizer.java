@@ -111,7 +111,7 @@ public final class MazeVisualizer {
   }
 
   public void render(WallFollowerSolver.WallSide selectedAlgorithm, boolean dropdownOpen,
-                     SolverResult currentResult, String errorMessage) {
+      SolverResult currentResult, String errorMessage) {
     if (currentResult != null && currentResult != result) {
       this.result = currentResult;
       this.pathSet = new HashSet<>(currentResult.path());
@@ -212,7 +212,7 @@ public final class MazeVisualizer {
   }
 
   private void renderStatistics(WallFollowerSolver.WallSide selectedAlgorithm, boolean dropdownOpen,
-                                SolverResult currentResult, String errorMessage) {
+      SolverResult currentResult, String errorMessage) {
     int panelX = MAZE_PANEL_WIDTH;
     int panelY = PADDING;
     int lineHeight = 30;
@@ -225,7 +225,7 @@ public final class MazeVisualizer {
     Raylib.DrawText(title, panelX + 10, currentY, 24, Colors.BLACK);
     currentY += lineHeight + 10;
 
-    renderDropdown(panelX + 10, currentY, selectedAlgorithm, dropdownOpen);
+    int dropdownY = currentY;
     currentY += DROPDOWN_HEIGHT + 10;
 
     if (errorMessage != null) {
@@ -240,6 +240,8 @@ public final class MazeVisualizer {
     String dimensions = String.format("Size: %d x %d", maze.getWidth(), maze.getHeight());
     Raylib.DrawText(dimensions, panelX + 10, currentY, 18, Colors.DARKGRAY);
     currentY += lineHeight + 10;
+
+    renderDropdown(panelX + 10, dropdownY, selectedAlgorithm, dropdownOpen);
 
     SolverResult displayResult = currentResult != null ? currentResult : result;
     if (displayResult != null) {
@@ -311,9 +313,9 @@ public final class MazeVisualizer {
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, DROPDOWN_WIDTH, DROPDOWN_HEIGHT);
 
     Raylib.DrawRectangle((int) dropdownRect.x(), (int) dropdownRect.y(),
-                        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.WHITE);
+        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.WHITE);
     Raylib.DrawRectangleLines((int) dropdownRect.x(), (int) dropdownRect.y(),
-                              (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.DARKGRAY);
+        (int) dropdownRect.width(), (int) dropdownRect.height(), Colors.DARKGRAY);
 
     Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.BLACK);
 
@@ -321,35 +323,32 @@ public final class MazeVisualizer {
     int arrowY = y + DROPDOWN_HEIGHT / 2;
     if (isOpen) {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY - 5),
-                         Helpers.newVector2(arrowX + 10, arrowY - 5),
-                         Helpers.newVector2(arrowX + 5, arrowY + 5), Colors.DARKGRAY);
+          Helpers.newVector2(arrowX + 10, arrowY - 5),
+          Helpers.newVector2(arrowX + 5, arrowY + 5), Colors.DARKGRAY);
     } else {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY + 5),
-                         Helpers.newVector2(arrowX + 10, arrowY + 5),
-                         Helpers.newVector2(arrowX + 5, arrowY - 5), Colors.DARKGRAY);
+          Helpers.newVector2(arrowX + 10, arrowY + 5),
+          Helpers.newVector2(arrowX + 5, arrowY - 5), Colors.DARKGRAY);
     }
 
     if (isOpen) {
-      String[] options = {"Wall Follower (LEFT)", "Wall Follower (RIGHT)"};
-      int totalHeight = DROPDOWN_HEIGHT + options.length * DROPDOWN_OPTION_HEIGHT;
+      String[] options = { "Wall Follower (LEFT)", "Wall Follower (RIGHT)" };
+      int totalOptionsHeight = options.length * DROPDOWN_OPTION_HEIGHT;
+      int optionsStartY = y + DROPDOWN_HEIGHT;
 
-      Raylib.Rectangle optionsRect = Helpers.newRectangle(x, y + DROPDOWN_HEIGHT,
-                                                          DROPDOWN_WIDTH, totalHeight - DROPDOWN_HEIGHT);
-      Raylib.DrawRectangle((int) optionsRect.x(), (int) optionsRect.y(),
-                          (int) optionsRect.width(), (int) optionsRect.height(), Colors.WHITE);
-      Raylib.DrawRectangleLines((int) optionsRect.x(), (int) optionsRect.y(),
-                                (int) optionsRect.width(), (int) optionsRect.height(), Colors.DARKGRAY);
+      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.WHITE);
+      Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.DARKGRAY);
 
       for (int i = 0; i < options.length; i++) {
-        int optionY = y + DROPDOWN_HEIGHT + i * DROPDOWN_OPTION_HEIGHT;
+        int optionY = optionsStartY + i * DROPDOWN_OPTION_HEIGHT;
         Raylib.Rectangle optionRect = Helpers.newRectangle(x, optionY, DROPDOWN_WIDTH, DROPDOWN_OPTION_HEIGHT);
 
         boolean isHovered = Raylib.CheckCollisionPointRec(mousePos, optionRect);
 
         if (isHovered) {
           Raylib.DrawRectangle((int) optionRect.x(), (int) optionRect.y(),
-                              (int) optionRect.width(), (int) optionRect.height(),
-                              Helpers.newColor((byte) 220, (byte) 220, (byte) 220, (byte) 255));
+              (int) optionRect.width(), (int) optionRect.height(),
+              Helpers.newColor((byte) 220, (byte) 220, (byte) 220, (byte) 255));
         }
 
         Raylib.DrawText(options[i], x + 5, optionY + 6, 16, Colors.BLACK);
@@ -369,7 +368,7 @@ public final class MazeVisualizer {
     }
 
     if (isOpen) {
-      String[] options = {"Wall Follower (LEFT)", "Wall Follower (RIGHT)"};
+      String[] options = { "Wall Follower (LEFT)", "Wall Follower (RIGHT)" };
       for (int i = 0; i < options.length; i++) {
         int optionY = dropdownY + DROPDOWN_HEIGHT + i * DROPDOWN_OPTION_HEIGHT;
         Raylib.Rectangle optionRect = Helpers.newRectangle(dropdownX, optionY, DROPDOWN_WIDTH, DROPDOWN_OPTION_HEIGHT);
@@ -382,7 +381,6 @@ public final class MazeVisualizer {
 
     return null;
   }
-
 
   public int getWindowWidth() {
     return WINDOW_WIDTH;
