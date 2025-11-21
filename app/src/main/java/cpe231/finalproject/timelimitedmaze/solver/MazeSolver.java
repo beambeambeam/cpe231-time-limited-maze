@@ -11,9 +11,11 @@ public abstract class MazeSolver {
 
   public final SolverResult solve(Maze maze) {
     Objects.requireNonNull(maze, "maze cannot be null");
+    long startTimeMs = System.currentTimeMillis();
     List<Coordinate> path = executeSolve(maze);
+    long endTimeMs = System.currentTimeMillis();
     int totalCost = calculatePathCost(maze, path);
-    return new SolverResult(List.copyOf(path), totalCost);
+    return new SolverResult(List.copyOf(path), totalCost, startTimeMs, endTimeMs);
   }
 
   protected abstract List<Coordinate> executeSolve(Maze maze);
