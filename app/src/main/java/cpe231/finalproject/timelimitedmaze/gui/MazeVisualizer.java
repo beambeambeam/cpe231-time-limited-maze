@@ -255,10 +255,6 @@ public final class MazeVisualizer {
     Raylib.DrawText(dimensions, panelX + 10, currentY, 18, Colors.DARKGRAY);
     currentY += lineHeight + 10;
 
-    renderDropdown(panelX + 10, algorithmDropdownY, selectedAlgorithm, dropdownOpen);
-    renderMazeDropdown(panelX + 10, mazeDropdownY, selectedMazeFileName, mazeDropdownOpen,
-        availableMazeFiles, mazeValidityMap);
-
     SolverResult displayResult = currentResult != null ? currentResult : result;
     if (displayResult != null) {
       String pathLength = "Path Length: " + displayResult.path().size();
@@ -317,6 +313,10 @@ public final class MazeVisualizer {
       Raylib.Vector2 position = Helpers.newVector2(imageX, currentY);
       Raylib.DrawTextureEx(chiikawaTexture, position, 0.0f, scale, Colors.WHITE);
     }
+
+    renderDropdown(panelX + 10, algorithmDropdownY, selectedAlgorithm, dropdownOpen);
+    renderMazeDropdown(panelX + 10, mazeDropdownY, selectedMazeFileName, mazeDropdownOpen,
+        availableMazeFiles, mazeValidityMap);
   }
 
   private void renderDropdown(int x, int y, WallFollowerSolver.WallSide selectedAlgorithm, boolean isOpen) {
