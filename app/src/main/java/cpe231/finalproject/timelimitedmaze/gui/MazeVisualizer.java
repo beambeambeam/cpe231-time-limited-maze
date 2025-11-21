@@ -314,12 +314,13 @@ public final class MazeVisualizer {
       Raylib.DrawTextureEx(chiikawaTexture, position, 0.0f, scale, Colors.WHITE);
     }
 
-    renderDropdown(panelX + 10, algorithmDropdownY, selectedAlgorithm, dropdownOpen);
     renderMazeDropdown(panelX + 10, mazeDropdownY, selectedMazeFileName, mazeDropdownOpen,
         availableMazeFiles, mazeValidityMap);
+    renderDropdown(panelX + 10, algorithmDropdownY, selectedAlgorithm, dropdownOpen, mazeDropdownY);
   }
 
-  private void renderDropdown(int x, int y, WallFollowerSolver.WallSide selectedAlgorithm, boolean isOpen) {
+  private void renderDropdown(int x, int y, WallFollowerSolver.WallSide selectedAlgorithm, boolean isOpen,
+      int mazeDropdownY) {
     Raylib.Vector2 mousePos = Raylib.GetMousePosition();
 
     String displayText = selectedAlgorithm == null
@@ -352,7 +353,8 @@ public final class MazeVisualizer {
       int totalOptionsHeight = options.length * DROPDOWN_OPTION_HEIGHT;
       int optionsStartY = y + DROPDOWN_HEIGHT;
 
-      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.WHITE);
+      int maxCoverageHeight = WINDOW_HEIGHT - optionsStartY;
+      Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, maxCoverageHeight, Colors.WHITE);
       Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.DARKGRAY);
 
       for (int i = 0; i < options.length; i++) {
