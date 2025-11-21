@@ -18,6 +18,8 @@ public abstract class MazeSolver {
 
   protected abstract List<Coordinate> executeSolve(Maze maze);
 
+  public abstract String getAlgorithmName();
+
   protected final Coordinate move(Coordinate coordinate, int deltaRow, int deltaColumn) {
     Objects.requireNonNull(coordinate, "coordinate cannot be null");
     return new Coordinate(coordinate.row() + deltaRow, coordinate.column() + deltaColumn);

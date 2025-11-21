@@ -9,9 +9,9 @@ public final class MazeGUI {
   private final Maze maze;
   private final MazeVisualizer visualizer;
 
-  public MazeGUI(Maze maze, SolverResult result) {
+  public MazeGUI(Maze maze, SolverResult result, String algorithmName) {
     this.maze = maze;
-    this.visualizer = new MazeVisualizer(maze, result);
+    this.visualizer = new MazeVisualizer(maze, result, algorithmName);
   }
 
   public void show() {

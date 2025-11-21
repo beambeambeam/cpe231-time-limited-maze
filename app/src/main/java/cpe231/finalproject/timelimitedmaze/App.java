@@ -1,7 +1,7 @@
 package cpe231.finalproject.timelimitedmaze;
 
 import cpe231.finalproject.timelimitedmaze.gui.MazeGUI;
-import cpe231.finalproject.timelimitedmaze.solver.LeftWallFollowerSolver;
+import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolvingException;
 import cpe231.finalproject.timelimitedmaze.solver.SolverResult;
@@ -15,10 +15,10 @@ public final class App {
   public static void main(String[] args) {
     Maze maze = MazeStore.getMaze("m100_100.txt");
 
-    MazeSolver leftWallFollowerSolver = new LeftWallFollowerSolver();
+    MazeSolver leftWallFollowerSolver = new WallFollowerSolver(WallFollowerSolver.WallSide.LEFT);
     try {
       SolverResult result = leftWallFollowerSolver.solve(maze);
-      MazeGUI gui = new MazeGUI(maze, result);
+      MazeGUI gui = new MazeGUI(maze, result, leftWallFollowerSolver.getAlgorithmName());
       gui.show();
     } catch (MazeSolvingException exception) {
       System.err.println("Failed to solve maze: " + exception.getMessage());

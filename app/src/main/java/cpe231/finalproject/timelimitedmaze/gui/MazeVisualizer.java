@@ -23,14 +23,16 @@ public final class MazeVisualizer {
 
   private final Maze maze;
   private final SolverResult result;
+  private final String algorithmName;
   private final Set<Coordinate> pathSet;
   private Raylib.Texture chiikawaTexture;
   private boolean textureLoaded = false;
   private int cellSize;
 
-  public MazeVisualizer(Maze maze, SolverResult result) {
+  public MazeVisualizer(Maze maze, SolverResult result, String algorithmName) {
     this.maze = maze;
     this.result = result;
+    this.algorithmName = algorithmName;
     this.pathSet = new HashSet<>(result.path());
     calculateCellSize();
   }
@@ -191,6 +193,10 @@ public final class MazeVisualizer {
 
     String title = "Solver Statistics";
     Raylib.DrawText(title, panelX + 10, currentY, 24, Colors.BLACK);
+    currentY += lineHeight + 10;
+
+    String algorithm = "Algorithm: " + algorithmName;
+    Raylib.DrawText(algorithm, panelX + 10, currentY, 18, Colors.DARKBLUE);
     currentY += lineHeight + 10;
 
     String mazeName = "Maze: " + maze.getName();
