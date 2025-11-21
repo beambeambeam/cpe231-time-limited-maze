@@ -28,6 +28,7 @@ public final class MazeVisualizer {
 
   private Maze maze;
   private SolverResult result;
+  @SuppressWarnings("unused")
   private String algorithmName;
   private Set<Coordinate> pathSet;
   private Raylib.Texture chiikawaTexture;
