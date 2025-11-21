@@ -1,7 +1,7 @@
 package cpe231.finalproject.timelimitedmaze.gui;
 
 import cpe231.finalproject.timelimitedmaze.solver.SolverResult;
-import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
+import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeCell;
@@ -115,10 +115,10 @@ public final class MazeVisualizer {
     renderMaze();
     renderPath();
     renderStartAndGoal();
-    renderStatistics(null, false, null, null, null, false, List.of(), Map.of());
+    renderStatistics(List.of(), null, false, null, null, null, false, List.of(), Map.of());
   }
 
-  public void render(WallFollowerSolver.WallSide selectedAlgorithm, boolean dropdownOpen,
+  public void render(List<MazeSolver> availableSolvers, Integer selectedSolverIndex, boolean dropdownOpen,
       SolverResult currentResult, String errorMessage, String selectedMazeFileName,
       boolean mazeDropdownOpen, List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap) {
     if (currentResult != null && currentResult != result) {
@@ -131,7 +131,7 @@ public final class MazeVisualizer {
     renderMaze();
     renderPath();
     renderStartAndGoal();
-    renderStatistics(selectedAlgorithm, dropdownOpen, currentResult, errorMessage,
+    renderStatistics(availableSolvers, selectedSolverIndex, dropdownOpen, currentResult, errorMessage,
         selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
   }
 
@@ -221,7 +221,7 @@ public final class MazeVisualizer {
     Raylib.DrawCircle(goalX, goalY, markerSize, Colors.RED);
   }
 
-  private void renderStatistics(WallFollowerSolver.WallSide selectedAlgorithm, boolean dropdownOpen,
+  private void renderStatistics(List<MazeSolver> availableSolvers, Integer selectedSolverIndex, boolean dropdownOpen,
       SolverResult currentResult, String errorMessage, String selectedMazeFileName,
       boolean mazeDropdownOpen, List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap) {
     int panelX = MAZE_PANEL_WIDTH;
@@ -316,16 +316,16 @@ public final class MazeVisualizer {
 
     renderMazeDropdown(panelX + 10, mazeDropdownY, selectedMazeFileName, mazeDropdownOpen,
         availableMazeFiles, mazeValidityMap);
-    renderDropdown(panelX + 10, algorithmDropdownY, selectedAlgorithm, dropdownOpen, mazeDropdownY);
+    renderDropdown(panelX + 10, algorithmDropdownY, availableSolvers, selectedSolverIndex, dropdownOpen, mazeDropdownY);
   }
 
-  private void renderDropdown(int x, int y, WallFollowerSolver.WallSide selectedAlgorithm, boolean isOpen,
-      int mazeDropdownY) {
+  private void renderDropdown(int x, int y, List<MazeSolver> availableSolvers, Integer selectedSolverIndex,
+      boolean isOpen, int mazeDropdownY) {
     Raylib.Vector2 mousePos = Raylib.GetMousePosition();
 
-    String displayText = selectedAlgorithm == null
+    String displayText = selectedSolverIndex == null
         ? "Select Algorithm..."
-        : "Wall Follower (" + selectedAlgorithm.name() + ")";
+        : availableSolvers.get(selectedSolverIndex).getAlgorithmName();
 
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, DROPDOWN_WIDTH, DROPDOWN_HEIGHT);
 
@@ -349,14 +349,13 @@ public final class MazeVisualizer {
     }
 
     if (isOpen) {
-      String[] options = { "Wall Follower (LEFT)", "Wall Follower (RIGHT)" };
-      int totalOptionsHeight = options.length * DROPDOWN_OPTION_HEIGHT;
+      int totalOptionsHeight = availableSolvers.size() * DROPDOWN_OPTION_HEIGHT;
       int optionsStartY = y + DROPDOWN_HEIGHT;
 
       Raylib.DrawRectangle(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.WHITE);
       Raylib.DrawRectangleLines(x, optionsStartY, DROPDOWN_WIDTH, totalOptionsHeight, Colors.DARKGRAY);
 
-      for (int i = 0; i < options.length; i++) {
+      for (int i = 0; i < availableSolvers.size(); i++) {
         int optionY = optionsStartY + i * DROPDOWN_OPTION_HEIGHT;
         Raylib.Rectangle optionRect = Helpers.newRectangle(x, optionY, DROPDOWN_WIDTH, DROPDOWN_OPTION_HEIGHT);
 
@@ -368,12 +367,13 @@ public final class MazeVisualizer {
               Helpers.newColor((byte) 220, (byte) 220, (byte) 220, (byte) 255));
         }
 
-        Raylib.DrawText(options[i], x + 5, optionY + 6, 16, Colors.BLACK);
+        String optionText = availableSolvers.get(i).getAlgorithmName();
+        Raylib.DrawText(optionText, x + 5, optionY + 6, 16, Colors.BLACK);
       }
     }
   }
 
-  public Integer checkDropdownClick(Raylib.Vector2 mousePos, boolean isOpen) {
+  public Integer checkDropdownClick(Raylib.Vector2 mousePos, boolean isOpen, List<MazeSolver> availableSolvers) {
     int panelX = MAZE_PANEL_WIDTH;
     int dropdownX = panelX + 10;
     int dropdownY = PADDING + 30 + 10;
@@ -385,8 +385,7 @@ public final class MazeVisualizer {
     }
 
     if (isOpen) {
-      String[] options = { "Wall Follower (LEFT)", "Wall Follower (RIGHT)" };
-      for (int i = 0; i < options.length; i++) {
+      for (int i = 0; i < availableSolvers.size(); i++) {
         int optionY = dropdownY + DROPDOWN_HEIGHT + i * DROPDOWN_OPTION_HEIGHT;
         Raylib.Rectangle optionRect = Helpers.newRectangle(dropdownX, optionY, DROPDOWN_WIDTH, DROPDOWN_OPTION_HEIGHT);
 

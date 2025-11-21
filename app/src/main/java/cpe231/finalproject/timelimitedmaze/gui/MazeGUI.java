@@ -1,13 +1,13 @@
 package cpe231.finalproject.timelimitedmaze.gui;
 
 import cpe231.finalproject.timelimitedmaze.solver.SolverResult;
-import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolvingException;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeStore;
 import cpe231.finalproject.timelimitedmaze.utils.MazeFileLister;
 import cpe231.finalproject.timelimitedmaze.utils.MazeValidator;
+import cpe231.finalproject.timelimitedmaze.utils.SolverRegistry;
 import com.raylib.Raylib;
 import com.raylib.Colors;
 import java.util.List;
@@ -17,7 +17,8 @@ import java.util.HashMap;
 public final class MazeGUI {
   private Maze maze;
   private final MazeVisualizer visualizer;
-  private WallFollowerSolver.WallSide selectedAlgorithm;
+  private final List<MazeSolver> availableSolvers;
+  private Integer selectedSolverIndex;
   private SolverResult result;
   private boolean dropdownOpen;
   private String errorMessage;
@@ -29,7 +30,8 @@ public final class MazeGUI {
   public MazeGUI(Maze maze) {
     this.maze = maze;
     this.visualizer = new MazeVisualizer(maze, null, null);
-    this.selectedAlgorithm = null;
+    this.availableSolvers = SolverRegistry.getAvailableSolvers();
+    this.selectedSolverIndex = null;
     this.result = null;
     this.dropdownOpen = false;
     this.errorMessage = null;
@@ -70,7 +72,7 @@ public final class MazeGUI {
       Raylib.BeginDrawing();
       Raylib.ClearBackground(Colors.RAYWHITE);
 
-      visualizer.render(selectedAlgorithm, dropdownOpen, result, errorMessage,
+      visualizer.render(availableSolvers, selectedSolverIndex, dropdownOpen, result, errorMessage,
           selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
 
       Raylib.EndDrawing();
@@ -84,7 +86,7 @@ public final class MazeGUI {
     Raylib.Vector2 mousePos = Raylib.GetMousePosition();
 
     if (Raylib.IsMouseButtonPressed(Raylib.MOUSE_BUTTON_LEFT)) {
-      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen);
+      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen, availableSolvers);
       Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles,
           mazeValidityMap);
 
@@ -93,12 +95,10 @@ public final class MazeGUI {
           dropdownOpen = !dropdownOpen;
           mazeDropdownOpen = false;
         } else {
-          WallFollowerSolver.WallSide newSelection = algorithmClicked == 0
-              ? WallFollowerSolver.WallSide.LEFT
-              : WallFollowerSolver.WallSide.RIGHT;
+          Integer newSelection = algorithmClicked;
 
-          if (selectedAlgorithm != newSelection) {
-            selectedAlgorithm = newSelection;
+          if (selectedSolverIndex == null || !selectedSolverIndex.equals(newSelection)) {
+            selectedSolverIndex = newSelection;
             solveMaze();
           }
           dropdownOpen = false;
@@ -136,19 +136,19 @@ public final class MazeGUI {
     result = null;
     errorMessage = null;
 
-    if (selectedAlgorithm != null) {
+    if (selectedSolverIndex != null) {
       solveMaze();
     }
   }
 
   private void solveMaze() {
-    if (selectedAlgorithm == null) {
+    if (selectedSolverIndex == null) {
       return;
     }
 
     errorMessage = null;
     try {
-      MazeSolver solver = new WallFollowerSolver(selectedAlgorithm);
+      MazeSolver solver = availableSolvers.get(selectedSolverIndex);
       result = solver.solve(maze);
     } catch (MazeSolvingException exception) {
       errorMessage = "Failed to solve maze: " + exception.getMessage();
