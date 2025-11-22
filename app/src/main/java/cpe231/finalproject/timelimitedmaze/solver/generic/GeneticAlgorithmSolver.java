@@ -32,10 +32,11 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
   private static final int DEFAULT_POPULATION_SIZE = 500;
   private static final int DEFAULT_MAX_GENERATIONS = 200;
-  private static final int STAGNATION_THRESHOLD = 20;
   private static final double ELITE_PERCENTAGE = 0.05;
 
+  @SuppressWarnings("unused")
   private final int populationSize;
+  @SuppressWarnings("unused")
   private final int maxGenerations;
   private final Random random;
   private final boolean useCache;
@@ -57,6 +58,38 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     this.useCache = useCache;
   }
 
+  private int calculateAdaptivePopulationSize(Maze maze) {
+    int mazeSize = maze.getWidth() * maze.getHeight();
+    int adaptiveSize = Math.max(mazeSize / 10, 500);
+    return Math.min(adaptiveSize, 5000);
+  }
+
+  private int calculateAdaptiveMaxGenerations(Maze maze) {
+    int mazeSize = maze.getWidth() * maze.getHeight();
+    if (mazeSize <= 400) {
+      return 200;
+    } else if (mazeSize <= 2500) {
+      return 500;
+    } else if (mazeSize <= 10000) {
+      return 1000;
+    } else {
+      return 1500;
+    }
+  }
+
+  private int calculateAdaptiveStagnationThreshold(Maze maze) {
+    int mazeSize = maze.getWidth() * maze.getHeight();
+    if (mazeSize <= 400) {
+      return 20;
+    } else if (mazeSize <= 2500) {
+      return 50;
+    } else if (mazeSize <= 10000) {
+      return 100;
+    } else {
+      return 150;
+    }
+  }
+
   @Override
   public String getAlgorithmName() {
     return "Genetic Algorithm";
@@ -71,25 +104,29 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       }
     }
 
+    int adaptivePopulationSize = calculateAdaptivePopulationSize(maze);
+    int adaptiveMaxGenerations = calculateAdaptiveMaxGenerations(maze);
+    int adaptiveStagnationThreshold = calculateAdaptiveStagnationThreshold(maze);
+
     FitnessCalculator fitnessCalculator = new FitnessCalculator(maze);
     PopulationInitializer initializer = new PopulationInitializer(random);
     TournamentSelection selection = new TournamentSelection(random);
     IntersectionCrossover crossover = new IntersectionCrossover(random);
     MutationOperator mutation = new MutationOperator(random);
 
-    Population population = initializePopulation(maze, initializer, fitnessCalculator);
+    Population population = initializePopulation(maze, initializer, fitnessCalculator, adaptivePopulationSize);
 
     double bestFitness = Double.NEGATIVE_INFINITY;
     int stagnationCount = 0;
     PathChromosome bestChromosome = null;
 
-    for (int generation = 0; generation < maxGenerations; generation++) {
+    for (int generation = 0; generation < adaptiveMaxGenerations; generation++) {
       List<Individual> newIndividuals = new ArrayList<>();
 
       List<Individual> elite = population.getElite(ELITE_PERCENTAGE);
       newIndividuals.addAll(elite);
 
-      while (newIndividuals.size() < populationSize) {
+      while (newIndividuals.size() < adaptivePopulationSize) {
         PathChromosome parent1 = selection.select(population.getIndividuals());
         PathChromosome parent2 = selection.select(population.getIndividuals());
 
@@ -102,7 +139,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
           double fitness = fitnessCalculator.calculateFitness(finalChromosome);
           newIndividuals.add(new Individual(finalChromosome, fitness));
 
-          if (newIndividuals.size() >= populationSize) {
+          if (newIndividuals.size() >= adaptivePopulationSize) {
             break;
           }
         }
@@ -128,7 +165,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
         return solution;
       }
 
-      if (stagnationCount >= STAGNATION_THRESHOLD) {
+      if (stagnationCount >= adaptiveStagnationThreshold) {
         break;
       }
 
@@ -154,7 +191,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   }
 
   private Population initializePopulation(Maze maze, PopulationInitializer initializer,
-      FitnessCalculator fitnessCalculator) {
+      FitnessCalculator fitnessCalculator, int adaptivePopulationSize) {
     if (useCache) {
       GACheckpointManager.CheckpointData checkpoint = GACheckpointManager.loadCheckpoint(maze.getName(), maze);
       if (checkpoint != null) {
@@ -167,7 +204,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       }
     }
 
-    List<PathChromosome> chromosomes = initializer.initialize(maze, populationSize);
+    List<PathChromosome> chromosomes = initializer.initialize(maze, adaptivePopulationSize);
     List<Individual> individuals = new ArrayList<>();
 
     for (PathChromosome chromosome : chromosomes) {
