@@ -109,3 +109,19 @@ task profiler(type: JavaExec) {
         println "Running maze solver profiler..."
     }
 }
+
+task animation(type: JavaExec) {
+    group = 'application'
+    description = 'Run GA Animation GUI to visualize genetic algorithm evolution'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'cpe231.finalproject.timelimitedmaze.gui.GAAnimation'
+
+    // macOS requires GUI applications to run on the main thread
+    if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+        jvmArgs = ['-XstartOnFirstThread']
+    }
+
+    doFirst {
+        println "Starting GA Animation GUI..."
+    }
+}
