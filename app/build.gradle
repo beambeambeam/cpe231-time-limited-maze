@@ -69,3 +69,14 @@ task generic(type: JavaExec) {
         println "Running genetic algorithm training on ${maze} with ${iterations} iterations..."
     }
 }
+
+task profiler(type: JavaExec) {
+    group = 'application'
+    description = 'Profile all solvers on all mazes and display results in a table'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'cpe231.finalproject.timelimitedmaze.MazeProfiler'
+
+    doFirst {
+        println "Running maze solver profiler..."
+    }
+}
