@@ -17,7 +17,7 @@ import java.util.HashMap;
 public final class MazeGUI {
   private Maze maze;
   private final MazeVisualizer visualizer;
-  private final List<MazeSolver> availableSolvers;
+  private List<MazeSolver> availableSolvers;
   private Integer selectedSolverIndex;
   private SolverResult result;
   private boolean dropdownOpen;

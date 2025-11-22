@@ -3,3 +3,7 @@
 
 # Ignore Gradle build output directory
 build
+
+# Ignore GA checkpoint and cache files
+ga_checkpoints/
+app/ga_checkpoints/
