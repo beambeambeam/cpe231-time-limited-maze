@@ -14,13 +14,30 @@ This will run the GA on all available mazes and display results in a table forma
 
 ## Profiler
 
-Profile all solvers on all mazes and view results in a table:
+Profile solvers on mazes and view results in a table:
 
 ```bash
+# Profile all solvers on all mazes
 ./gradlew :app:profiler
+
+# List available algorithms and mazes
+./gradlew :app:profiler -Pargs="--list"
+
+# Profile specific algorithm(s) on specific maze(s)
+./gradlew :app:profiler -Pargs="--algo 'Genetic Algorithm' --maze m15_15.txt"
+
+# Profile multiple algorithms on multiple mazes
+./gradlew :app:profiler -Pargs="-a 'Wall Follower (LEFT)' -a 'Wall Follower (RIGHT)' -m m30_30.txt -m m40_40.txt"
 ```
 
-This will run every algorithm on every maze and display:
+Options:
+
+- `-a, --algo <name>`: Select algorithm(s) to profile (can specify multiple)
+- `-m, --maze <name>`: Select maze(s) to profile (can specify multiple)
+- `-l, --list`: List available algorithms and mazes
+- `-h, --help`: Show help message
+
+The profiler displays:
 
 - Results table with cost, path length, execution time, and goal status
 - Summary statistics for each solver (success rate, total time, average cost)

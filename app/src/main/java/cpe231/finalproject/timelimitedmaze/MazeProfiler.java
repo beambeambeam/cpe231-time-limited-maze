@@ -7,12 +7,16 @@ import cpe231.finalproject.timelimitedmaze.utils.MazeFileLister;
 import cpe231.finalproject.timelimitedmaze.utils.MazeStore;
 import cpe231.finalproject.timelimitedmaze.utils.SolverRegistry;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Profiles all maze solvers on all available mazes.
+ * Profiles maze solvers on available mazes.
  *
- * Runs each algorithm on each maze and displays results in a table format.
+ * Runs selected algorithms on selected mazes and displays results in a table
+ * format.
+ * Supports filtering by algorithm and maze names.
  */
 public final class MazeProfiler {
 
@@ -20,20 +24,48 @@ public final class MazeProfiler {
   }
 
   public static void main(String[] args) {
-    System.out.println("=== Maze Solver Profiler ===\n");
+    if (args.length > 0 && (args[0].equals("--list") || args[0].equals("-l"))) {
+      printAvailableOptions();
+      return;
+    }
 
-    List<MazeSolver> solvers = SolverRegistry.getAvailableSolvers();
-    List<String> mazeFiles = MazeFileLister.listMazeFiles();
+    ParsedArgs parsed = parseArguments(args);
+    if (parsed.showHelp()) {
+      printUsage();
+      return;
+    }
+
+    List<MazeSolver> allSolvers = SolverRegistry.getAvailableSolvers();
+    List<String> allMazeFiles = MazeFileLister.listMazeFiles();
+
+    List<MazeSolver> selectedSolvers = filterSolvers(allSolvers, parsed.algorithms());
+    List<String> selectedMazeFiles = filterMazeFiles(allMazeFiles, parsed.mazes());
+
+    if (selectedSolvers.isEmpty()) {
+      System.err.println("Error: No valid algorithms selected.");
+      System.err.println("Available algorithms: " + allSolvers.stream()
+          .map(MazeSolver::getAlgorithmName)
+          .toList());
+      return;
+    }
+
+    if (selectedMazeFiles.isEmpty()) {
+      System.err.println("Error: No valid mazes selected.");
+      System.err.println("Available mazes: " + allMazeFiles);
+      return;
+    }
+
+    System.out.println("=== Maze Solver Profiler ===\n");
+    System.out
+        .println("Running " + selectedSolvers.size() + " solver(s) on " + selectedMazeFiles.size() + " maze(s)...\n");
 
     List<ProfileResult> results = new ArrayList<>();
 
-    System.out.println("Running " + solvers.size() + " solver(s) on " + mazeFiles.size() + " maze(s)...\n");
-
-    for (MazeSolver solver : solvers) {
+    for (MazeSolver solver : selectedSolvers) {
       String solverName = solver.getAlgorithmName();
       System.out.println("Testing: " + solverName);
 
-      for (String mazeFile : mazeFiles) {
+      for (String mazeFile : selectedMazeFiles) {
         try {
           Maze maze = MazeStore.getMaze(mazeFile);
           System.out.print("  " + mazeFile + "... ");
@@ -57,7 +89,94 @@ public final class MazeProfiler {
       System.out.println();
     }
 
-    printResultsTable(results, solvers, mazeFiles);
+    printResultsTable(results, selectedSolvers, selectedMazeFiles);
+  }
+
+  private static void printAvailableOptions() {
+    System.out.println("=== Available Options ===\n");
+
+    System.out.println("Algorithms:");
+    List<MazeSolver> solvers = SolverRegistry.getAvailableSolvers();
+    for (MazeSolver solver : solvers) {
+      System.out.println("  - " + solver.getAlgorithmName());
+    }
+
+    System.out.println("\nMazes:");
+    List<String> mazeFiles = MazeFileLister.listMazeFiles();
+    for (String mazeFile : mazeFiles) {
+      System.out.println("  - " + mazeFile);
+    }
+  }
+
+  private static void printUsage() {
+    System.out.println("Usage: MazeProfiler [options]");
+    System.out.println();
+    System.out.println("Options:");
+    System.out.println("  -a, --algo <name>     Select algorithm(s) to profile (can specify multiple)");
+    System.out.println("  -m, --maze <name>    Select maze(s) to profile (can specify multiple)");
+    System.out.println("  -l, --list           List available algorithms and mazes");
+    System.out.println("  -h, --help           Show this help message");
+    System.out.println();
+    System.out.println("Examples:");
+    System.out.println("  ./gradlew :app:profiler -Pargs=\"--algo 'Genetic Algorithm' --maze m15_15.txt\"");
+    System.out.println(
+        "  ./gradlew :app:profiler -Pargs=\"-a 'Wall Follower (LEFT)' -a 'Wall Follower (RIGHT)' -m m30_30.txt\"");
+    System.out.println("  ./gradlew :app:profiler -Pargs=\"--list\"");
+  }
+
+  private static ParsedArgs parseArguments(String[] args) {
+    Set<String> algorithms = new HashSet<>();
+    Set<String> mazes = new HashSet<>();
+    boolean showHelp = false;
+
+    for (int i = 0; i < args.length; i++) {
+      String arg = args[i];
+      if (arg.equals("--help") || arg.equals("-h")) {
+        showHelp = true;
+      } else if (arg.equals("--algo") || arg.equals("-a")) {
+        if (i + 1 < args.length) {
+          String value = args[++i];
+          value = value.replaceAll("^['\"]|['\"]$", "");
+          algorithms.add(value);
+        }
+      } else if (arg.equals("--maze") || arg.equals("-m")) {
+        if (i + 1 < args.length) {
+          String value = args[++i];
+          value = value.replaceAll("^['\"]|['\"]$", "");
+          mazes.add(value);
+        }
+      }
+    }
+
+    return new ParsedArgs(algorithms.isEmpty() ? null : algorithms, mazes.isEmpty() ? null : mazes, showHelp);
+  }
+
+  private static List<MazeSolver> filterSolvers(List<MazeSolver> allSolvers, Set<String> selectedNames) {
+    if (selectedNames == null) {
+      return allSolvers;
+    }
+
+    List<MazeSolver> filtered = new ArrayList<>();
+    for (MazeSolver solver : allSolvers) {
+      if (selectedNames.contains(solver.getAlgorithmName())) {
+        filtered.add(solver);
+      }
+    }
+    return filtered;
+  }
+
+  private static List<String> filterMazeFiles(List<String> allMazeFiles, Set<String> selectedNames) {
+    if (selectedNames == null) {
+      return allMazeFiles;
+    }
+
+    List<String> filtered = new ArrayList<>();
+    for (String mazeFile : allMazeFiles) {
+      if (selectedNames.contains(mazeFile)) {
+        filtered.add(mazeFile);
+      }
+    }
+    return filtered;
   }
 
   private static void printResultsTable(List<ProfileResult> results,
@@ -120,5 +239,8 @@ public final class MazeProfiler {
 
   private record ProfileResult(String solverName, String mazeFile, int cost,
       int pathLength, double timeMs, boolean reachedGoal) {
+  }
+
+  private record ParsedArgs(Set<String> algorithms, Set<String> mazes, boolean showHelp) {
   }
 }
