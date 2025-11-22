@@ -2,22 +2,15 @@ Sawasdekub
 
 to run this program please use ./gradlew run
 
-## Genetic Algorithm Training
+## Genetic Algorithm Pre-computation
 
-Train the genetic algorithm solver on mazes:
+Pre-compute solutions for the genetic algorithm solver on all mazes:
 
 ```bash
-# Train on a specific maze
-./gradlew :app:generic -Pmaze=m15_15.txt -Piterations=10
-
-# Train on a random maze
-./gradlew :app:generic -Pmaze=random -Piterations=20
-
-# Default: trains on m15_15.txt with 10 iterations
 ./gradlew :app:generic
 ```
 
-Trained solutions are cached in `ga_checkpoints/` and will be used automatically by the GUI solver.
+This will run the GA on all available mazes and display results in a table format. The GA will evolve through multiple generations internally until it finds a solution. Pre-computed solutions are cached in `ga_checkpoints/` and will be used automatically by the GUI solver.
 
 ## Profiler
 

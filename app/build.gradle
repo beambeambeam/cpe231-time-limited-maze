@@ -54,19 +54,12 @@ tasks.named('run') {
 
 task generic(type: JavaExec) {
     group = 'application'
-    description = 'Train the genetic algorithm solver on a specific maze (iteratively)'
+    description = 'Pre-compute genetic algorithm solutions for all mazes'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'cpe231.finalproject.timelimitedmaze.GATraining'
-
-    // Allow passing maze name and iteration count:
-    // ./gradlew :app:generic -Pmaze=m15_15.txt -Piterations=20
-    // ./gradlew :app:generic -Pmaze=random -Piterations=10
-    def maze = project.hasProperty('maze') ? project.property('maze') : 'm15_15.txt'
-    def iterations = project.hasProperty('iterations') ? project.property('iterations') : '10'
-    args = [maze, iterations]
+    mainClass = 'cpe231.finalproject.timelimitedmaze.GAPrecompute'
 
     doFirst {
-        println "Running genetic algorithm training on ${maze} with ${iterations} iterations..."
+        println "Pre-computing genetic algorithm solutions for all mazes..."
     }
 }
 
