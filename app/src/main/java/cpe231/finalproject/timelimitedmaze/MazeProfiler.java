@@ -38,21 +38,20 @@ public final class MazeProfiler {
           Maze maze = MazeStore.getMaze(mazeFile);
           System.out.print("  " + mazeFile + "... ");
 
-          long startTime = System.nanoTime();
           SolverResult result = solver.solve(maze);
-          long endTime = System.nanoTime();
 
-          long timeMs = (endTime - startTime) / 1_000_000;
+          long executionTimeNs = result.endTimeNs() - result.startTimeNs();
+          double executionTimeMs = executionTimeNs / 1_000_000.0;
           boolean reachedGoal = result.path().getLast().equals(maze.getGoal());
 
           results.add(new ProfileResult(solverName, mazeFile, result.totalCost(),
-              result.path().size(), timeMs, reachedGoal));
+              result.path().size(), executionTimeMs, reachedGoal));
 
           System.out.println(reachedGoal ? "✓" : "✗");
 
         } catch (Exception e) {
           System.out.println("ERROR: " + e.getMessage());
-          results.add(new ProfileResult(solverName, mazeFile, -1, -1, -1, false));
+          results.add(new ProfileResult(solverName, mazeFile, -1, -1, -1.0, false));
         }
       }
       System.out.println();
@@ -72,18 +71,18 @@ public final class MazeProfiler {
         .mapToInt(String::length)
         .max().orElse(15));
 
-    String headerFormat = "%-" + solverNameWidth + "s | %-" + mazeNameWidth + "s | %8s | %8s | %10s | %6s";
-    String rowFormat = "%-" + solverNameWidth + "s | %-" + mazeNameWidth + "s | %8d | %8d | %10d ms | %6s";
+    String headerFormat = "%-" + solverNameWidth + "s | %-" + mazeNameWidth + "s | %8s | %8s | %12s | %6s";
+    String rowFormat = "%-" + solverNameWidth + "s | %-" + mazeNameWidth + "s | %8d | %8d | %12.3f ms | %6s";
 
     System.out.printf(headerFormat, "Algorithm", "Maze", "Cost", "Length", "Time", "Goal");
     System.out.println();
-    System.out.println("-".repeat(solverNameWidth + mazeNameWidth + 50));
+    System.out.println("-".repeat(solverNameWidth + mazeNameWidth + 55));
 
     for (ProfileResult result : results) {
       String goalStatus = result.reachedGoal() ? "✓" : "✗";
       if (result.cost() < 0) {
-        System.out.printf(rowFormat, result.solverName(), result.mazeFile(),
-            -1, -1, -1, "ERROR");
+        System.out.printf("%-" + solverNameWidth + "s | %-" + mazeNameWidth + "s | %8s | %8s | %12s | %6s",
+            result.solverName(), result.mazeFile(), "ERROR", "ERROR", "ERROR", "ERROR");
       } else {
         System.out.printf(rowFormat, result.solverName(), result.mazeFile(),
             result.cost(), result.pathLength(), result.timeMs(), goalStatus);
@@ -99,9 +98,9 @@ public final class MazeProfiler {
           .filter(r -> r.solverName().equals(solverName))
           .toList();
 
-      long totalTime = solverResults.stream()
-          .filter(r -> r.timeMs() >= 0)
-          .mapToLong(ProfileResult::timeMs)
+      double totalTime = solverResults.stream()
+          .filter(r -> r.timeMs() >= 0.0)
+          .mapToDouble(ProfileResult::timeMs)
           .sum();
       int successCount = (int) solverResults.stream()
           .filter(ProfileResult::reachedGoal)
@@ -113,13 +112,13 @@ public final class MazeProfiler {
 
       System.out.println(solverName + ":");
       System.out.println("  Success rate: " + successCount + "/" + solverResults.size());
-      System.out.println("  Total time: " + totalTime + " ms");
+      System.out.printf("  Total time: %.3f ms%n", totalTime);
       System.out.println("  Average cost: " + (solverResults.size() > 0 ? totalCost / solverResults.size() : 0));
       System.out.println();
     }
   }
 
   private record ProfileResult(String solverName, String mazeFile, int cost,
-      int pathLength, long timeMs, boolean reachedGoal) {
+      int pathLength, double timeMs, boolean reachedGoal) {
   }
 }
