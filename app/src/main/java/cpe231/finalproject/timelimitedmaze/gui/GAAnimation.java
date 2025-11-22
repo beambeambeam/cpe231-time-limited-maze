@@ -415,11 +415,20 @@ public final class GAAnimation {
     int panelX = MAZE_PANEL_WIDTH;
     int dropdownX = panelX + 10;
     int mazeDropdownY = PADDING + 30 + 10;
-    int speedDropdownY = mazeDropdownY + DROPDOWN_HEIGHT + 10;
+
+    int maxMazeOptionsHeight = 0;
+    int validCount = 0;
+    for (String fileName : availableMazeFiles) {
+      if (mazeValidityMap.getOrDefault(fileName, false)) {
+        validCount++;
+      }
+    }
+    maxMazeOptionsHeight = validCount * DROPDOWN_OPTION_HEIGHT;
+
+    int speedDropdownY = mazeDropdownY + DROPDOWN_HEIGHT + maxMazeOptionsHeight + 10;
 
     renderMazeDropdown(dropdownX, mazeDropdownY, selectedMazeFileName, mazeDropdownOpen,
         availableMazeFiles, mazeValidityMap);
-
     renderSpeedDropdown(dropdownX, speedDropdownY, generationSpeedMs, speedDropdownOpen);
   }
 
@@ -589,7 +598,17 @@ public final class GAAnimation {
     int panelX = MAZE_PANEL_WIDTH;
     int dropdownX = panelX + 10;
     int mazeDropdownY = PADDING + 30 + 10;
-    int dropdownY = mazeDropdownY + DROPDOWN_HEIGHT + 10;
+
+    int maxMazeOptionsHeight = 0;
+    int validCount = 0;
+    for (String fileName : availableMazeFiles) {
+      if (mazeValidityMap.getOrDefault(fileName, false)) {
+        validCount++;
+      }
+    }
+    maxMazeOptionsHeight = validCount * DROPDOWN_OPTION_HEIGHT;
+
+    int dropdownY = mazeDropdownY + DROPDOWN_HEIGHT + maxMazeOptionsHeight + 10;
 
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(dropdownX, dropdownY, DROPDOWN_WIDTH, DROPDOWN_HEIGHT);
 
