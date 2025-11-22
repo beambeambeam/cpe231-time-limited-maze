@@ -38,7 +38,8 @@ public final class GAAnimationController {
         500,
         false,
         0,
-        0);
+        0,
+        new ArrayList<>());
 
     this.view = new GAAnimationView();
     this.inputHandler = new GAInputHandler();
@@ -54,7 +55,7 @@ public final class GAAnimationController {
             state.maze(), false, state.currentGeneration(), state.currentBestPath(),
             state.currentBestFitness(), state.goalReached(), state.selectedMazeFileName(), true,
             state.availableMazeFiles(), state.mazeValidityMap(), state.generationSpeedMs(), false,
-            state.lastGenerationTime(), state.cellSize());
+            state.lastGenerationTime(), state.cellSize(), state.allPopulationPaths());
         break;
       case SELECT_MAZE:
         if (result.data() instanceof String fileName) {
@@ -66,7 +67,7 @@ public final class GAAnimationController {
             state.maze(), state.isPlaying(), state.currentGeneration(), state.currentBestPath(),
             state.currentBestFitness(), state.goalReached(), state.selectedMazeFileName(), false,
             state.availableMazeFiles(), state.mazeValidityMap(), state.generationSpeedMs(), true,
-            state.lastGenerationTime(), state.cellSize());
+            state.lastGenerationTime(), state.cellSize(), state.allPopulationPaths());
         break;
       case SELECT_SPEED:
         if (result.data() instanceof Integer speed) {
@@ -74,7 +75,7 @@ public final class GAAnimationController {
               state.maze(), state.isPlaying(), state.currentGeneration(), state.currentBestPath(),
               state.currentBestFitness(), state.goalReached(), state.selectedMazeFileName(), false,
               state.availableMazeFiles(), state.mazeValidityMap(), speed, false,
-              state.lastGenerationTime(), state.cellSize());
+              state.lastGenerationTime(), state.cellSize(), state.allPopulationPaths());
         }
         break;
       case TOGGLE_PLAY_STOP:
@@ -85,7 +86,7 @@ public final class GAAnimationController {
               state.maze(), newIsPlaying, state.currentGeneration(), state.currentBestPath(),
               state.currentBestFitness(), state.goalReached(), state.selectedMazeFileName(), false,
               state.availableMazeFiles(), state.mazeValidityMap(), state.generationSpeedMs(), false,
-              newLastGenerationTime, state.cellSize());
+              newLastGenerationTime, state.cellSize(), state.allPopulationPaths());
         }
         break;
       case CLOSE_DROPDOWNS:
@@ -93,7 +94,7 @@ public final class GAAnimationController {
             state.maze(), state.isPlaying(), state.currentGeneration(), state.currentBestPath(),
             state.currentBestFitness(), state.goalReached(), state.selectedMazeFileName(), false,
             state.availableMazeFiles(), state.mazeValidityMap(), state.generationSpeedMs(), false,
-            state.lastGenerationTime(), state.cellSize());
+            state.lastGenerationTime(), state.cellSize(), state.allPopulationPaths());
         break;
       default:
         break;
@@ -114,7 +115,7 @@ public final class GAAnimationController {
           state.maze(), !shouldStop, result.generation(), result.bestPath(),
           result.bestFitness(), result.goalReached(), state.selectedMazeFileName(), false,
           state.availableMazeFiles(), state.mazeValidityMap(), state.generationSpeedMs(), false,
-          currentTime, state.cellSize());
+          currentTime, state.cellSize(), result.allPaths());
     }
   }
 
@@ -135,7 +136,7 @@ public final class GAAnimationController {
     state = new GAAnimationState(
         maze, false, 0, initial.bestPath(), initial.bestFitness(), initial.goalReached(),
         fileName, false, state.availableMazeFiles(), state.mazeValidityMap(), state.generationSpeedMs(),
-        false, 0, cellSize);
+        false, 0, cellSize, initial.allPaths());
   }
 
   private int calculateCellSize(Maze maze) {

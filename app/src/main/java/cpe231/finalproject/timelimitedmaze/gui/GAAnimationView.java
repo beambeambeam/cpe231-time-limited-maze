@@ -38,7 +38,7 @@ public final class GAAnimationView {
   }
 
   private void renderPath(GAAnimationState state) {
-    GAPathRenderer.render(state.currentBestPath(), state.cellSize());
+    GAPathRenderer.render(state.currentBestPath(), state.allPopulationPaths(), state.cellSize());
   }
 
   private void renderStartAndGoal(GAAnimationState state) {

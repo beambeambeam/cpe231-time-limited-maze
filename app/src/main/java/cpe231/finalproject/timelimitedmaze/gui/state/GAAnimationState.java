@@ -19,5 +19,6 @@ public record GAAnimationState(
     int generationSpeedMs,
     boolean speedDropdownOpen,
     long lastGenerationTime,
-    int cellSize) {
+    int cellSize,
+    List<List<Coordinate>> allPopulationPaths) {
 }

@@ -61,7 +61,11 @@ public final class GARunner {
   public GenerationResult getCurrentState() {
     List<Coordinate> bestPath = bestChromosome != null ? bestChromosome.getPath() : new ArrayList<>();
     boolean goalReached = bestChromosome != null && reachesGoal(bestPath, maze);
-    return new GenerationResult(generation, bestPath, bestFitness, goalReached);
+    List<List<Coordinate>> allPaths = new ArrayList<>();
+    for (Individual individual : population.getIndividuals()) {
+      allPaths.add(individual.chromosome().getPath());
+    }
+    return new GenerationResult(generation, bestPath, bestFitness, goalReached, allPaths);
   }
 
   public GenerationResult nextGeneration() {
@@ -106,8 +110,12 @@ public final class GARunner {
 
     List<Coordinate> bestPath = bestChromosome != null ? bestChromosome.getPath() : new ArrayList<>();
     boolean goalReached = bestChromosome != null && reachesGoal(bestPath, maze);
+    List<List<Coordinate>> allPaths = new ArrayList<>();
+    for (Individual individual : population.getIndividuals()) {
+      allPaths.add(individual.chromosome().getPath());
+    }
 
-    return new GenerationResult(generation, bestPath, bestFitness, goalReached);
+    return new GenerationResult(generation, bestPath, bestFitness, goalReached, allPaths);
   }
 
   private boolean reachesGoal(List<Coordinate> path, Maze maze) {
@@ -117,6 +125,7 @@ public final class GARunner {
     return path.getLast().equals(maze.getGoal());
   }
 
-  public record GenerationResult(int generation, List<Coordinate> bestPath, double bestFitness, boolean goalReached) {
+  public record GenerationResult(int generation, List<Coordinate> bestPath, double bestFitness, boolean goalReached,
+      List<List<Coordinate>> allPaths) {
   }
 }
