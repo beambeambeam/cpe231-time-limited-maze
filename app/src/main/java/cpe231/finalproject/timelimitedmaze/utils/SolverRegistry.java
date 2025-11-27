@@ -1,8 +1,9 @@
 package cpe231.finalproject.timelimitedmaze.utils;
 
+import cpe231.finalproject.timelimitedmaze.solver.GeneticAlgorithmSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
-import cpe231.finalproject.timelimitedmaze.solver.generic.GeneticAlgorithmSolver;
+
 import java.util.List;
 
 public final class SolverRegistry {

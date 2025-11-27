@@ -1,7 +1,5 @@
-package cpe231.finalproject.timelimitedmaze.solver.generic;
+package cpe231.finalproject.timelimitedmaze.solver;
 
-import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
-import cpe231.finalproject.timelimitedmaze.solver.MazeSolvingException;
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import java.util.ArrayList;

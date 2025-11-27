@@ -1,7 +1,7 @@
 package cpe231.finalproject.timelimitedmaze;
 
+import cpe231.finalproject.timelimitedmaze.solver.GeneticAlgorithmSolver;
 import cpe231.finalproject.timelimitedmaze.solver.SolverResult;
-import cpe231.finalproject.timelimitedmaze.solver.generic.GeneticAlgorithmSolver;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeFileLister;
 import cpe231.finalproject.timelimitedmaze.utils.MazeStore;
