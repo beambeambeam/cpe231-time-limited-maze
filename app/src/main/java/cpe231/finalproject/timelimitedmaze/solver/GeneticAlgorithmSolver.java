@@ -462,7 +462,8 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
           }
         }
       }
-      default -> {}
+      default -> {
+      }
     }
 
     return mutated;
@@ -656,5 +657,6 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     }
   }
 
-  private record AStarNode(Coordinate coord, double fScore) {}
+  private record AStarNode(Coordinate coord, double fScore) {
+  }
 }
