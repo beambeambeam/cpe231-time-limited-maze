@@ -43,6 +43,7 @@ public static List<MazeSolver> getAvailableSolvers() {
   return List.of(
       new WallFollowerSolver(...),
       new GeneticAlgorithmSolver(),
+      new AstarSolver(),
       new MySolver());  // Add your solver here
 }
 ```
