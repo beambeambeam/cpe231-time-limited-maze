@@ -5,19 +5,17 @@ import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Set;
 
 /**
- * Improved Genetic Algorithm solver for mazes with weighted tiles.
+ * Pure Genetic Algorithm solver for mazes with weighted tiles.
  *
- * Uses adaptive parameters, cost-aware fitness evaluation, heuristic-guided
- * initialization, and local search optimization (memetic algorithm approach).
+ * Uses direction-based chromosomes where each gene represents a direction
+ * (NORTH, EAST, SOUTH, WEST). Chromosomes are executed to generate paths
+ * through the maze. Uses crossover and mutation operations on direction genes.
  */
 public final class GeneticAlgorithmSolver extends MazeSolver {
 
@@ -58,12 +56,12 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     int mazeSize = maze.getWidth() * maze.getHeight();
     int adaptivePopSize = Math.max(populationSize, (int) Math.sqrt(mazeSize) * 2);
     int adaptiveMaxGen = Math.max(maxGenerations, (int) Math.sqrt(mazeSize) * 3);
-    int maxPathLength = (maze.getWidth() + maze.getHeight()) * 2;
+    int maxChromosomeLength = (maze.getWidth() + maze.getHeight()) * 2;
     log("GA start grid " + maze.getHeight() + "x" + maze.getWidth()
         + " pop " + adaptivePopSize + " generations " + adaptiveMaxGen
-        + " maxPathLength " + maxPathLength);
+        + " maxChromosomeLength " + maxChromosomeLength);
 
-    List<PathIndividual> population = initializePopulation(maze, maxPathLength, adaptivePopSize);
+    List<PathIndividual> population = initializePopulation(maze, maxChromosomeLength, adaptivePopSize);
     PathIndividual bestEver = null;
 
     for (int generation = 0; generation < adaptiveMaxGen; generation++) {
@@ -71,22 +69,24 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
       PathIndividual currentBest = getBest(population);
       if (bestEver == null || currentBest.fitness > bestEver.fitness) {
-        bestEver = new PathIndividual(new ArrayList<>(currentBest.path), currentBest.fitness);
+        bestEver = new PathIndividual(new ArrayList<>(currentBest.chromosome), currentBest.fitness);
       }
 
-      if (reachesGoal(currentBest.path, maze)) {
-        List<Coordinate> optimized = localSearchOptimize(currentBest.path, maze);
-        log("GA found goal at generation " + generation + " path length " + optimized.size());
-        return optimized;
+      List<Coordinate> bestPath = executeChromosome(currentBest.chromosome, maze);
+      if (reachesGoal(bestPath, maze)) {
+        log("GA found goal at generation " + generation + " path length " + bestPath.size());
+        return bestPath;
       }
 
       double diversity = calculateDiversity(population);
       double mutationRate = adaptiveMutationRate(diversity, generation, adaptiveMaxGen);
 
       if (generation % 10 == 0) {
-        int bestPathLength = currentBest.path.size();
-        int distanceToGoal = manhattanDistance(currentBest.path.getLast(), maze.getGoal());
-        int bestPathCost = calculatePathCost(maze, currentBest.path);
+        int bestPathLength = bestPath.size();
+        int distanceToGoal = bestPath.isEmpty() ? Integer.MAX_VALUE
+            : manhattanDistance(bestPath.getLast(), maze.getGoal());
+        int bestPathCost = bestPath.isEmpty() ? Integer.MAX_VALUE
+            : calculatePathCost(maze, bestPath);
         log("GA generation " + generation + " best path length " + bestPathLength
             + " distance to goal " + distanceToGoal + " cost " + bestPathCost
             + " diversity " + String.format("%.3f", diversity) + " mutation " + String.format("%.3f", mutationRate));
@@ -95,29 +95,20 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       int eliteCount = Math.max(2, (int) (adaptivePopSize * ELITE_PERCENTAGE));
       List<PathIndividual> elite = getElite(population, eliteCount);
 
-      for (PathIndividual eliteIndividual : elite) {
-        if (reachesGoal(eliteIndividual.path, maze)) {
-          eliteIndividual.path = localSearchOptimize(eliteIndividual.path, maze);
-          evaluateSingleFitness(eliteIndividual, maze);
-        }
-      }
-
       List<PathIndividual> newPopulation = new ArrayList<>(elite);
 
       while (newPopulation.size() < adaptivePopSize) {
         PathIndividual parent1 = selectParent(population);
         PathIndividual parent2 = selectParent(population);
 
-        List<Coordinate> childPath = crossover(parent1.path, parent2.path, maze);
+        List<Direction> childChromosome = crossoverChromosomes(parent1.chromosome, parent2.chromosome);
 
         if (random.nextDouble() < mutationRate) {
-          childPath = mutate(childPath, maze, maxPathLength);
+          childChromosome = mutateChromosome(childChromosome, maxChromosomeLength);
         }
 
-        childPath = repairPath(childPath, maze, maxPathLength);
-
-        if (!childPath.isEmpty()) {
-          newPopulation.add(new PathIndividual(childPath, 0.0));
+        if (!childChromosome.isEmpty()) {
+          newPopulation.add(new PathIndividual(childChromosome, 0.0));
         }
       }
 
@@ -131,134 +122,109 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       best = bestEver;
     }
 
-    List<Coordinate> solution = repairPath(best.path, maze, maxPathLength);
+    List<Coordinate> solution = executeChromosome(best.chromosome, maze);
 
     if (!reachesGoal(solution, maze)) {
-      solution = findPathAStar(maze, maze.getStart(), maze.getGoal());
-      if (solution == null || !reachesGoal(solution, maze)) {
-        log("GA failed to reach goal; fallback A* also failed");
-        throw new MazeSolvingException("Genetic algorithm failed to find a solution");
-      }
-      log("GA used fallback A* path length " + solution.size());
+      log("GA failed to reach goal after " + adaptiveMaxGen + " generations");
+      throw new MazeSolvingException("Genetic algorithm failed to find a solution");
     }
 
-    List<Coordinate> optimized = localSearchOptimize(solution, maze);
-    log("GA final optimized path length " + optimized.size());
-    return optimized;
+    log("GA final path length " + solution.size());
+    return solution;
   }
 
   private List<PathIndividual> initializePopulation(Maze maze, int maxLength, int popSize) {
     List<PathIndividual> population = new ArrayList<>();
     Coordinate start = maze.getStart();
 
-    List<Coordinate> aStarPath = findPathAStar(maze, start, maze.getGoal());
-    if (aStarPath != null && !aStarPath.isEmpty()) {
-      population.add(new PathIndividual(aStarPath, 0.0));
-    }
-
-    for (int i = population.size(); i < popSize; i++) {
-      List<Coordinate> path;
+    for (int i = 0; i < popSize; i++) {
+      List<Direction> chromosome;
       if (random.nextDouble() < HEURISTIC_PROBABILITY) {
-        path = createHeuristicWalk(maze, start, maxLength);
+        chromosome = initializeHeuristicChromosome(maze, maxLength);
       } else {
-        path = createRandomWalk(maze, start, maxLength);
+        chromosome = initializeRandomChromosome(maxLength);
       }
-      population.add(new PathIndividual(path, 0.0));
+      population.add(new PathIndividual(chromosome, 0.0));
     }
 
     return population;
   }
 
-  private List<Coordinate> createHeuristicWalk(Maze maze, Coordinate start, int maxLength) {
-    List<Coordinate> path = new ArrayList<>();
-    path.add(start);
-    Coordinate current = start;
-    Set<Coordinate> visited = new HashSet<>();
-    visited.add(current);
-    Coordinate goal = maze.getGoal();
+  private List<Direction> initializeRandomChromosome(int maxLength) {
+    int length = random.nextInt(maxLength / 2) + maxLength / 4;
+    List<Direction> chromosome = new ArrayList<>();
+    Direction[] directions = Direction.values();
 
-    for (int step = 0; step < maxLength; step++) {
-      if (current.equals(goal)) {
-        break;
-      }
-
-      List<Coordinate> neighbors = walkableNeighbors(maze, current);
-      List<Coordinate> unvisited = new ArrayList<>();
-      for (Coordinate n : neighbors) {
-        if (!visited.contains(n)) {
-          unvisited.add(n);
-        }
-      }
-
-      if (unvisited.isEmpty()) {
-        if (neighbors.isEmpty()) {
-          break;
-        }
-        current = neighbors.get(random.nextInt(neighbors.size()));
-      } else {
-        if (random.nextDouble() < 0.3) {
-          current = unvisited.get(random.nextInt(unvisited.size()));
-        } else {
-          current = selectBestNeighbor(maze, unvisited, goal);
-        }
-      }
-
-      path.add(current);
-      visited.add(current);
+    for (int i = 0; i < length; i++) {
+      chromosome.add(directions[random.nextInt(directions.length)]);
     }
 
-    return path;
+    return chromosome;
   }
 
-  private Coordinate selectBestNeighbor(Maze maze, List<Coordinate> neighbors, Coordinate goal) {
-    Coordinate best = neighbors.get(0);
+  private List<Direction> initializeHeuristicChromosome(Maze maze, int maxLength) {
+    int length = random.nextInt(maxLength / 2) + maxLength / 4;
+    List<Direction> chromosome = new ArrayList<>();
+    Direction[] directions = Direction.values();
+    Coordinate goal = maze.getGoal();
+    Coordinate current = maze.getStart();
+
+    for (int i = 0; i < length; i++) {
+      if (random.nextDouble() < 0.6) {
+        Direction bestDirection = selectBestDirection(maze, current, goal);
+        chromosome.add(bestDirection);
+        Coordinate next = move(current, bestDirection);
+        if (isWalkable(maze, next)) {
+          current = next;
+        }
+      } else {
+        Direction randomDir = directions[random.nextInt(directions.length)];
+        chromosome.add(randomDir);
+        Coordinate next = move(current, randomDir);
+        if (isWalkable(maze, next)) {
+          current = next;
+        }
+      }
+    }
+
+    return chromosome;
+  }
+
+  private Direction selectBestDirection(Maze maze, Coordinate current, Coordinate goal) {
+    Direction[] directions = Direction.values();
+    Direction best = directions[random.nextInt(directions.length)];
     double bestScore = Double.MAX_VALUE;
 
-    for (Coordinate neighbor : neighbors) {
-      int distance = manhattanDistance(neighbor, goal);
-      int cost = stepCost(maze, neighbor);
-      double score = distance * 2.0 + cost;
-
-      if (score < bestScore) {
-        bestScore = score;
-        best = neighbor;
+    for (Direction dir : directions) {
+      Coordinate next = move(current, dir);
+      if (isWalkable(maze, next)) {
+        int distance = manhattanDistance(next, goal);
+        int cost = stepCost(maze, next);
+        double score = distance * 2.0 + cost;
+        if (score < bestScore) {
+          bestScore = score;
+          best = dir;
+        }
       }
     }
 
     return best;
   }
 
-  private List<Coordinate> createRandomWalk(Maze maze, Coordinate start, int maxLength) {
+  private List<Coordinate> executeChromosome(List<Direction> chromosome, Maze maze) {
     List<Coordinate> path = new ArrayList<>();
-    path.add(start);
-    Coordinate current = start;
-    Set<Coordinate> visited = new HashSet<>();
-    visited.add(current);
+    Coordinate current = maze.getStart();
+    path.add(current);
 
-    for (int step = 0; step < maxLength; step++) {
-      if (current.equals(maze.getGoal())) {
-        break;
-      }
-
-      List<Coordinate> neighbors = walkableNeighbors(maze, current);
-      List<Coordinate> unvisited = new ArrayList<>();
-      for (Coordinate n : neighbors) {
-        if (!visited.contains(n)) {
-          unvisited.add(n);
-        }
-      }
-
-      if (unvisited.isEmpty()) {
-        if (neighbors.isEmpty()) {
+    for (Direction direction : chromosome) {
+      Coordinate next = move(current, direction);
+      if (isWalkable(maze, next)) {
+        current = next;
+        path.add(current);
+        if (current.equals(maze.getGoal())) {
           break;
         }
-        current = neighbors.get(random.nextInt(neighbors.size()));
-      } else {
-        current = unvisited.get(random.nextInt(unvisited.size()));
       }
-
-      path.add(current);
-      visited.add(current);
     }
 
     return path;
@@ -271,15 +237,17 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   }
 
   private void evaluateSingleFitness(PathIndividual individual, Maze maze) {
-    if (individual.path.isEmpty()) {
+    List<Coordinate> path = executeChromosome(individual.chromosome, maze);
+
+    if (path.isEmpty()) {
       individual.fitness = Double.NEGATIVE_INFINITY;
       return;
     }
 
     Coordinate goal = maze.getGoal();
-    Coordinate end = individual.path.getLast();
+    Coordinate end = path.getLast();
     int distance = manhattanDistance(end, goal);
-    int pathCost = calculatePathCost(maze, individual.path);
+    int pathCost = calculatePathCost(maze, path);
 
     if (distance == 0) {
       individual.fitness = 1_000_000.0 - pathCost;
@@ -293,20 +261,26 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       return 1.0;
     }
 
-    Set<Coordinate> uniqueEndpoints = new HashSet<>();
     Set<Integer> uniqueLengths = new HashSet<>();
+    Set<String> uniqueChromosomes = new HashSet<>();
 
     for (PathIndividual individual : population) {
-      if (!individual.path.isEmpty()) {
-        uniqueEndpoints.add(individual.path.getLast());
-        uniqueLengths.add(individual.path.size());
-      }
+      uniqueLengths.add(individual.chromosome.size());
+      uniqueChromosomes.add(chromosomeToString(individual.chromosome));
     }
 
-    double endpointDiversity = (double) uniqueEndpoints.size() / population.size();
     double lengthDiversity = (double) uniqueLengths.size() / population.size();
+    double chromosomeDiversity = (double) uniqueChromosomes.size() / population.size();
 
-    return (endpointDiversity + lengthDiversity) / 2.0;
+    return (lengthDiversity + chromosomeDiversity) / 2.0;
+  }
+
+  private String chromosomeToString(List<Direction> chromosome) {
+    StringBuilder sb = new StringBuilder();
+    for (Direction dir : chromosome) {
+      sb.append(dir.name().charAt(0));
+    }
+    return sb.toString();
   }
 
   private double adaptiveMutationRate(double diversity, int generation, int maxGen) {
@@ -326,7 +300,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     List<PathIndividual> elite = new ArrayList<>();
     for (int i = 0; i < Math.min(count, sorted.size()); i++) {
       PathIndividual original = sorted.get(i);
-      elite.add(new PathIndividual(new ArrayList<>(original.path), original.fitness));
+      elite.add(new PathIndividual(new ArrayList<>(original.chromosome), original.fitness));
     }
     return elite;
   }
@@ -346,137 +320,140 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     return best;
   }
 
-  private List<Coordinate> crossover(List<Coordinate> path1, List<Coordinate> path2, Maze maze) {
-    if (path1.isEmpty() || path2.isEmpty()) {
-      return path1.isEmpty() ? new ArrayList<>(path2) : new ArrayList<>(path1);
+  private List<Direction> crossoverChromosomes(List<Direction> parent1, List<Direction> parent2) {
+    if (parent1.isEmpty() && parent2.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (parent1.isEmpty()) {
+      return new ArrayList<>(parent2);
+    }
+    if (parent2.isEmpty()) {
+      return new ArrayList<>(parent1);
     }
 
-    Set<Coordinate> path1Set = new HashSet<>(path1);
-    List<Coordinate> intersection = new ArrayList<>();
+    int crossoverType = random.nextInt(3);
 
-    for (Coordinate coord : path2) {
-      if (path1Set.contains(coord)) {
-        intersection.add(coord);
+    switch (crossoverType) {
+      case 0 -> {
+        return singlePointCrossover(parent1, parent2);
+      }
+      case 1 -> {
+        return multiPointCrossover(parent1, parent2);
+      }
+      case 2 -> {
+        return uniformCrossover(parent1, parent2);
+      }
+      default -> {
+        return singlePointCrossover(parent1, parent2);
       }
     }
+  }
 
-    if (!intersection.isEmpty()) {
-      Coordinate crossoverPoint = intersection.get(random.nextInt(intersection.size()));
-      int index1 = path1.indexOf(crossoverPoint);
-      int index2 = path2.indexOf(crossoverPoint);
+  private List<Direction> singlePointCrossover(List<Direction> parent1, List<Direction> parent2) {
+    int point1 = random.nextInt(parent1.size());
+    int point2 = random.nextInt(parent2.size());
 
-      if (index1 != -1 && index2 != -1) {
-        List<Coordinate> child = new ArrayList<>();
-        child.addAll(path1.subList(0, index1 + 1));
-        if (index2 + 1 < path2.size()) {
-          child.addAll(path2.subList(index2 + 1, path2.size()));
-        }
-        return child;
-      }
+    List<Direction> child = new ArrayList<>();
+    child.addAll(parent1.subList(0, point1));
+    child.addAll(parent2.subList(point2, parent2.size()));
+
+    return child;
+  }
+
+  private List<Direction> multiPointCrossover(List<Direction> parent1, List<Direction> parent2) {
+    int numPoints = Math.min(3, Math.min(parent1.size(), parent2.size()) / 2);
+    if (numPoints < 1) {
+      return singlePointCrossover(parent1, parent2);
     }
 
-    int splitPoint1 = Math.max(1, path1.size() / 2);
-    List<Coordinate> child = new ArrayList<>(path1.subList(0, splitPoint1));
+    List<Integer> points1 = new ArrayList<>();
+    List<Integer> points2 = new ArrayList<>();
 
-    Coordinate bridgeStart = child.getLast();
-    int bridgeTarget = random.nextInt(Math.max(1, path2.size() - 1)) + 1;
-    Coordinate bridgeEnd = path2.get(Math.min(bridgeTarget, path2.size() - 1));
+    for (int i = 0; i < numPoints; i++) {
+      points1.add(random.nextInt(parent1.size()));
+      points2.add(random.nextInt(parent2.size()));
+    }
 
-    List<Coordinate> bridge = findPathAStar(maze, bridgeStart, bridgeEnd);
-    if (bridge != null && bridge.size() > 1) {
-      child.addAll(bridge.subList(1, bridge.size()));
-      if (bridgeTarget + 1 < path2.size()) {
-        child.addAll(path2.subList(bridgeTarget + 1, path2.size()));
+    Collections.sort(points1);
+    Collections.sort(points2);
+
+    List<Direction> child = new ArrayList<>();
+    boolean useParent1 = true;
+    int prev1 = 0;
+    int prev2 = 0;
+
+    for (int i = 0; i < numPoints; i++) {
+      if (useParent1) {
+        child.addAll(parent1.subList(prev1, points1.get(i)));
+        prev1 = points1.get(i);
+      } else {
+        child.addAll(parent2.subList(prev2, points2.get(i)));
+        prev2 = points2.get(i);
       }
+      useParent1 = !useParent1;
+    }
+
+    if (useParent1) {
+      child.addAll(parent1.subList(prev1, parent1.size()));
     } else {
-      return random.nextBoolean() ? new ArrayList<>(path1) : new ArrayList<>(path2);
+      child.addAll(parent2.subList(prev2, parent2.size()));
     }
 
     return child;
   }
 
-  private List<Coordinate> mutate(List<Coordinate> path, Maze maze, int maxLength) {
-    if (path.isEmpty()) {
-      return path;
+  private List<Direction> uniformCrossover(List<Direction> parent1, List<Direction> parent2) {
+    int maxLength = Math.max(parent1.size(), parent2.size());
+    List<Direction> child = new ArrayList<>();
+
+    for (int i = 0; i < maxLength; i++) {
+      Direction gene;
+      if (i >= parent1.size()) {
+        gene = parent2.get(i);
+      } else if (i >= parent2.size()) {
+        gene = parent1.get(i);
+      } else {
+        gene = random.nextBoolean() ? parent1.get(i) : parent2.get(i);
+      }
+      child.add(gene);
     }
 
-    List<Coordinate> mutated = new ArrayList<>(path);
-    int mutationType = random.nextInt(5);
+    return child;
+  }
+
+  private List<Direction> mutateChromosome(List<Direction> chromosome, int maxLength) {
+    if (chromosome.isEmpty()) {
+      return initializeRandomChromosome(maxLength);
+    }
+
+    List<Direction> mutated = new ArrayList<>(chromosome);
+    int mutationType = random.nextInt(4);
 
     switch (mutationType) {
       case 0 -> {
-        if (mutated.size() > 2) {
-          int removeIndex = random.nextInt(mutated.size() - 2) + 1;
-          mutated.remove(removeIndex);
-        }
+        int index = random.nextInt(mutated.size());
+        Direction[] directions = Direction.values();
+        mutated.set(index, directions[random.nextInt(directions.length)]);
       }
       case 1 -> {
         if (mutated.size() < maxLength) {
-          int insertIndex = random.nextInt(mutated.size());
-          Coordinate current = mutated.get(insertIndex);
-          List<Coordinate> neighbors = walkableNeighbors(maze, current);
-          if (!neighbors.isEmpty()) {
-            Set<Coordinate> pathSet = new HashSet<>(mutated);
-            List<Coordinate> validNeighbors = new ArrayList<>();
-            for (Coordinate n : neighbors) {
-              if (!pathSet.contains(n)) {
-                validNeighbors.add(n);
-              }
-            }
-            if (!validNeighbors.isEmpty()) {
-              mutated.add(insertIndex + 1, validNeighbors.get(random.nextInt(validNeighbors.size())));
-            }
-          }
+          int index = random.nextInt(mutated.size() + 1);
+          Direction[] directions = Direction.values();
+          mutated.add(index, directions[random.nextInt(directions.length)]);
         }
       }
       case 2 -> {
-        if (mutated.size() > 2) {
-          int changeIndex = random.nextInt(mutated.size() - 2) + 1;
-          Coordinate prev = mutated.get(changeIndex - 1);
-          List<Coordinate> neighbors = walkableNeighbors(maze, prev);
-          if (!neighbors.isEmpty()) {
-            Coordinate next = changeIndex + 1 < mutated.size() ? mutated.get(changeIndex + 1) : null;
-            List<Coordinate> validNeighbors = new ArrayList<>();
-            for (Coordinate n : neighbors) {
-              if (next == null || isAdjacent(n, next) || n.equals(next)) {
-                validNeighbors.add(n);
-              }
-            }
-            if (!validNeighbors.isEmpty()) {
-              mutated.set(changeIndex, validNeighbors.get(random.nextInt(validNeighbors.size())));
-            } else {
-              mutated.set(changeIndex, neighbors.get(random.nextInt(neighbors.size())));
-            }
-          }
+        if (mutated.size() > 1) {
+          int index = random.nextInt(mutated.size());
+          mutated.remove(index);
         }
       }
       case 3 -> {
-        if (mutated.size() > 3) {
-          int start = random.nextInt(mutated.size() - 2) + 1;
-          int end = Math.min(start + random.nextInt(3) + 1, mutated.size() - 1);
-          if (end > start) {
-            List<Coordinate> shortcut = findPathAStar(maze, mutated.get(start), mutated.get(end));
-            if (shortcut != null && shortcut.size() < end - start + 1) {
-              List<Coordinate> newPath = new ArrayList<>(mutated.subList(0, start));
-              newPath.addAll(shortcut);
-              if (end + 1 < mutated.size()) {
-                newPath.addAll(mutated.subList(end + 1, mutated.size()));
-              }
-              mutated = newPath;
-            }
-          }
-        }
-      }
-      case 4 -> {
-        if (!reachesGoal(mutated, maze) && mutated.size() > 1) {
-          Coordinate lastPos = mutated.getLast();
-          List<Coordinate> extension = findPathAStar(maze, lastPos, maze.getGoal());
-          if (extension != null && extension.size() > 1) {
-            int addCount = Math.min(extension.size() - 1, maxLength - mutated.size());
-            if (addCount > 0) {
-              mutated.addAll(extension.subList(1, Math.min(addCount + 1, extension.size())));
-            }
-          }
+        if (mutated.size() > 1) {
+          int index = random.nextInt(mutated.size() - 1);
+          Direction temp = mutated.get(index);
+          mutated.set(index, mutated.get(index + 1));
+          mutated.set(index + 1, temp);
         }
       }
       default -> {
@@ -484,167 +461,6 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     }
 
     return mutated;
-  }
-
-  private List<Coordinate> repairPath(List<Coordinate> path, Maze maze, int maxPathLength) {
-    if (path.isEmpty()) {
-      return createHeuristicWalk(maze, maze.getStart(), maxPathLength);
-    }
-
-    List<Coordinate> repaired = new ArrayList<>();
-    Set<Coordinate> visited = new HashSet<>();
-    repaired.add(maze.getStart());
-    visited.add(maze.getStart());
-
-    for (int i = 1; i < path.size() && repaired.size() < maxPathLength; i++) {
-      Coordinate current = repaired.getLast();
-      Coordinate target = path.get(i);
-
-      if (current.equals(maze.getGoal())) {
-        break;
-      }
-
-      if (isAdjacent(current, target) && isWalkable(maze, target)) {
-        repaired.add(target);
-        visited.add(target);
-      } else if (isWalkable(maze, target)) {
-        List<Coordinate> bridge = findPathAStar(maze, current, target);
-        if (bridge != null && bridge.size() > 1) {
-          int addCount = Math.min(bridge.size() - 1, maxPathLength - repaired.size());
-          for (int j = 1; j <= addCount; j++) {
-            Coordinate step = bridge.get(j);
-            if (!visited.contains(step) || step.equals(maze.getGoal())) {
-              repaired.add(step);
-              visited.add(step);
-              if (step.equals(maze.getGoal())) {
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      if (repaired.getLast().equals(maze.getGoal())) {
-        break;
-      }
-    }
-
-    if (!reachesGoal(repaired, maze) && repaired.size() < maxPathLength) {
-      List<Coordinate> toGoal = findPathAStar(maze, repaired.getLast(), maze.getGoal());
-      if (toGoal != null && toGoal.size() > 1) {
-        int addCount = Math.min(toGoal.size() - 1, maxPathLength - repaired.size());
-        repaired.addAll(toGoal.subList(1, Math.min(addCount + 1, toGoal.size())));
-      }
-    }
-
-    return repaired;
-  }
-
-  private List<Coordinate> findPathAStar(Maze maze, Coordinate from, Coordinate to) {
-    if (from.equals(to)) {
-      return List.of(from);
-    }
-
-    Map<Coordinate, Integer> gScore = new HashMap<>();
-    Map<Coordinate, Coordinate> cameFrom = new HashMap<>();
-    Set<Coordinate> closedSet = new HashSet<>();
-
-    PriorityQueue<AStarNode> openSet = new PriorityQueue<>(
-        Comparator.comparingDouble(n -> n.fScore));
-
-    gScore.put(from, 0);
-    openSet.add(new AStarNode(from, manhattanDistance(from, to)));
-
-    int maxIterations = maze.getWidth() * maze.getHeight() * 2;
-    int iterations = 0;
-
-    while (!openSet.isEmpty() && iterations < maxIterations) {
-      iterations++;
-      AStarNode currentNode = openSet.poll();
-      Coordinate current = currentNode.coord;
-
-      if (current.equals(to)) {
-        return reconstructPath(cameFrom, current);
-      }
-
-      if (closedSet.contains(current)) {
-        continue;
-      }
-      closedSet.add(current);
-
-      for (Coordinate neighbor : walkableNeighbors(maze, current)) {
-        if (closedSet.contains(neighbor)) {
-          continue;
-        }
-
-        int tentativeG = gScore.getOrDefault(current, Integer.MAX_VALUE) + stepCost(maze, neighbor);
-
-        if (tentativeG < gScore.getOrDefault(neighbor, Integer.MAX_VALUE)) {
-          cameFrom.put(neighbor, current);
-          gScore.put(neighbor, tentativeG);
-          double fScore = tentativeG + manhattanDistance(neighbor, to);
-          openSet.add(new AStarNode(neighbor, fScore));
-        }
-      }
-    }
-
-    return null;
-  }
-
-  private List<Coordinate> reconstructPath(Map<Coordinate, Coordinate> cameFrom, Coordinate current) {
-    List<Coordinate> path = new ArrayList<>();
-    path.add(current);
-    while (cameFrom.containsKey(current)) {
-      current = cameFrom.get(current);
-      path.addFirst(current);
-    }
-    return path;
-  }
-
-  private List<Coordinate> localSearchOptimize(List<Coordinate> path, Maze maze) {
-    if (path.size() < 3) {
-      return path;
-    }
-
-    List<Coordinate> optimized = new ArrayList<>(path);
-    int currentCost = calculatePathCost(maze, optimized);
-    boolean improved = true;
-    int maxPasses = 5;
-    int passes = 0;
-
-    while (improved && passes < maxPasses) {
-      improved = false;
-      passes++;
-
-      for (int i = 0; i < optimized.size() - 2 && optimized.size() > 2; i++) {
-        for (int j = i + 2; j < optimized.size(); j++) {
-          Coordinate start = optimized.get(i);
-          Coordinate end = optimized.get(j);
-
-          List<Coordinate> shortcut = findPathAStar(maze, start, end);
-          if (shortcut != null && shortcut.size() < j - i + 1) {
-            List<Coordinate> newPath = new ArrayList<>(optimized.subList(0, i));
-            newPath.addAll(shortcut);
-            if (j + 1 < optimized.size()) {
-              newPath.addAll(optimized.subList(j + 1, optimized.size()));
-            }
-
-            int newCost = calculatePathCost(maze, newPath);
-            if (newCost < currentCost && reachesGoal(newPath, maze)) {
-              optimized = newPath;
-              currentCost = newCost;
-              improved = true;
-              break;
-            }
-          }
-        }
-        if (improved) {
-          break;
-        }
-      }
-    }
-
-    return optimized;
   }
 
   private boolean reachesGoal(List<Coordinate> path, Maze maze) {
@@ -658,22 +474,13 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     return Math.abs(a.row() - b.row()) + Math.abs(a.column() - b.column());
   }
 
-  private boolean isAdjacent(Coordinate a, Coordinate b) {
-    int rowDiff = Math.abs(a.row() - b.row());
-    int colDiff = Math.abs(a.column() - b.column());
-    return (rowDiff == 1 && colDiff == 0) || (rowDiff == 0 && colDiff == 1);
-  }
-
   private static class PathIndividual {
-    List<Coordinate> path;
+    List<Direction> chromosome;
     double fitness;
 
-    PathIndividual(List<Coordinate> path, double fitness) {
-      this.path = path;
+    PathIndividual(List<Direction> chromosome, double fitness) {
+      this.chromosome = chromosome;
       this.fitness = fitness;
     }
-  }
-
-  private record AStarNode(Coordinate coord, double fScore) {
   }
 }
