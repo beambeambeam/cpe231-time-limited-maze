@@ -81,7 +81,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       double diversity = calculateDiversity(population);
       double mutationRate = adaptiveMutationRate(diversity, generation, adaptiveMaxGen);
 
-      if (generation % 10 == 0) {
+      if (generation % 5 == 0) {
         int bestPathLength = bestPath.size();
         int distanceToGoal = bestPath.isEmpty() ? Integer.MAX_VALUE
             : manhattanDistance(bestPath.getLast(), maze.getGoal());
