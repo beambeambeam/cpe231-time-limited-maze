@@ -12,13 +12,13 @@ public final class LogPanel {
   private static final int TITLE_HEIGHT = FONT_SIZE + PADDING;
   public static final int LINE_HEIGHT = 18;
   public static final int MIN_HEIGHT = 120;
-  private static final String TIMESTAMP_SEPARATOR = " - ";
+  private static final String TIMESTAMP_SEPARATOR = " ";
   private static final String TIMESTAMP_PLACEHOLDER = "HH:mm:ss.SSS";
   private static final int TIMESTAMP_COLUMN_WIDTH;
 
   static {
-    int timestampPrefixWidth = Raylib.MeasureText(TIMESTAMP_PLACEHOLDER + TIMESTAMP_SEPARATOR, FONT_SIZE);
-    TIMESTAMP_COLUMN_WIDTH = timestampPrefixWidth + 4;
+    int timestampWidth = Raylib.MeasureText(TIMESTAMP_PLACEHOLDER, FONT_SIZE);
+    TIMESTAMP_COLUMN_WIDTH = timestampWidth + 8;
   }
 
   private LogPanel() {
@@ -68,7 +68,7 @@ public final class LogPanel {
       if (logLine.isContinuation) {
         Raylib.DrawText(logLine.message, x + PADDING + TIMESTAMP_COLUMN_WIDTH, contentY, FONT_SIZE, Colors.LIGHTGRAY);
       } else {
-        Raylib.DrawText(logLine.timestamp + TIMESTAMP_SEPARATOR, x + PADDING, contentY, FONT_SIZE, Colors.LIGHTGRAY);
+        Raylib.DrawText(logLine.timestamp, x + PADDING, contentY, FONT_SIZE, Colors.LIGHTGRAY);
         Raylib.DrawText(logLine.message, x + PADDING + TIMESTAMP_COLUMN_WIDTH, contentY, FONT_SIZE, Colors.LIGHTGRAY);
       }
       contentY += LINE_HEIGHT;

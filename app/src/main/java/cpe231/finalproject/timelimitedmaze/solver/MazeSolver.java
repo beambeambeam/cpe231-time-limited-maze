@@ -50,7 +50,7 @@ public abstract class MazeSolver {
     Objects.requireNonNull(message, "message cannot be null");
     synchronized (logs) {
       String timestamp = LocalTime.now().format(TIME_FORMATTER);
-      logs.add(timestamp + " - " + message);
+      logs.add(timestamp + " " + message);
     }
   }
 
