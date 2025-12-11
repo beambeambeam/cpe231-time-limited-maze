@@ -123,6 +123,16 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     }
 
     List<Coordinate> solution = executeChromosome(best.chromosome, maze);
+    double finalDiversity = calculateDiversity(population);
+    double finalMutationRate = adaptiveMutationRate(finalDiversity, adaptiveMaxGen - 1, adaptiveMaxGen);
+    int finalPathLength = solution.size();
+    int finalDistanceToGoal = solution.isEmpty() ? Integer.MAX_VALUE
+        : manhattanDistance(solution.getLast(), maze.getGoal());
+    int finalPathCost = solution.isEmpty() ? Integer.MAX_VALUE
+        : calculatePathCost(maze, solution);
+    log("GA generation " + (adaptiveMaxGen - 1) + " (final) best path length " + finalPathLength
+        + " distance to goal " + finalDistanceToGoal + " cost " + finalPathCost
+        + " diversity " + String.format("%.3f", finalDiversity) + " mutation " + String.format("%.3f", finalMutationRate));
 
     if (!reachesGoal(solution, maze)) {
       log("GA failed to reach goal after " + adaptiveMaxGen + " generations");
