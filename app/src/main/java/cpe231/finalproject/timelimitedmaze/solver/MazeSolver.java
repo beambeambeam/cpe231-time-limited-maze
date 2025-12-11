@@ -3,11 +3,14 @@ package cpe231.finalproject.timelimitedmaze.solver;
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeCell;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class MazeSolver {
+
+  private final List<String> logs = new ArrayList<>();
 
   public final SolverResult solve(Maze maze) {
     Objects.requireNonNull(maze, "maze cannot be null");
@@ -29,6 +32,15 @@ public abstract class MazeSolver {
 
   protected final Coordinate move(Coordinate coordinate, Direction direction) {
     return move(coordinate, direction.deltaRow, direction.deltaColumn);
+  }
+
+  protected final void log(String message) {
+    Objects.requireNonNull(message, "message cannot be null");
+    logs.add(Instant.now() + " - " + message);
+  }
+
+  public final List<String> getLogs() {
+    return List.copyOf(logs);
   }
 
   public final int calculatePathCost(Maze maze, List<Coordinate> path) {
