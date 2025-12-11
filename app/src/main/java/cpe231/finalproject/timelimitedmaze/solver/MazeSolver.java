@@ -14,10 +14,17 @@ public abstract class MazeSolver {
 
   public final SolverResult solve(Maze maze) {
     Objects.requireNonNull(maze, "maze cannot be null");
+    logs.clear();
+    log("Starting solve with algorithm: " + getAlgorithmName());
+    log("Maze size: " + maze.getHeight() + "x" + maze.getWidth());
     long startTimeNs = System.nanoTime();
     List<Coordinate> path = executeSolve(maze);
     long endTimeNs = System.nanoTime();
     int totalCost = calculatePathCost(maze, path);
+    log("Path length: " + path.size());
+    log("Path total cost: " + totalCost);
+    double durationMs = (endTimeNs - startTimeNs) / 1_000_000.0;
+    log("Solve completed in " + durationMs + " ms");
     return new SolverResult(List.copyOf(path), totalCost, startTimeNs, endTimeNs);
   }
 
