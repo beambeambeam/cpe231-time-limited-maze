@@ -69,10 +69,13 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
       PathIndividual currentBest = getBest(population);
       if (bestEver == null || currentBest.fitness > bestEver.fitness) {
-        bestEver = new PathIndividual(new ArrayList<>(currentBest.chromosome), currentBest.fitness);
+        List<Coordinate> bestPath = currentBest.cachedPath != null
+            ? new ArrayList<>(currentBest.cachedPath)
+            : executeChromosome(currentBest.chromosome, maze);
+        bestEver = new PathIndividual(new ArrayList<>(currentBest.chromosome), currentBest.fitness, bestPath);
       }
 
-      List<Coordinate> bestPath = executeChromosome(currentBest.chromosome, maze);
+      List<Coordinate> bestPath = getCachedOrExecutePath(currentBest, maze);
       if (reachesGoal(bestPath, maze)) {
         log("GA found goal at generation " + generation + " path length " + bestPath.size());
         return bestPath;
@@ -95,7 +98,13 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       int eliteCount = Math.max(2, (int) (adaptivePopSize * ELITE_PERCENTAGE));
       List<PathIndividual> elite = getElite(population, eliteCount);
 
-      List<PathIndividual> newPopulation = new ArrayList<>(elite);
+      List<PathIndividual> newPopulation = new ArrayList<>();
+      for (PathIndividual eliteIndividual : elite) {
+        newPopulation.add(new PathIndividual(
+            new ArrayList<>(eliteIndividual.chromosome),
+            eliteIndividual.fitness,
+            eliteIndividual.cachedPath != null ? new ArrayList<>(eliteIndividual.cachedPath) : null));
+      }
 
       while (newPopulation.size() < adaptivePopSize) {
         PathIndividual parent1 = selectParent(population);
@@ -108,7 +117,8 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
         }
 
         if (!childChromosome.isEmpty()) {
-          newPopulation.add(new PathIndividual(childChromosome, 0.0));
+          PathIndividual child = new PathIndividual(childChromosome, 0.0);
+          newPopulation.add(child);
         }
       }
 
@@ -122,7 +132,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       best = bestEver;
     }
 
-    List<Coordinate> solution = executeChromosome(best.chromosome, maze);
+    List<Coordinate> solution = getCachedOrExecutePath(best, maze);
     double finalDiversity = calculateDiversity(population);
     double finalMutationRate = adaptiveMutationRate(finalDiversity, adaptiveMaxGen - 1, adaptiveMaxGen);
     int finalPathLength = solution.size();
@@ -247,7 +257,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   }
 
   private void evaluateSingleFitness(PathIndividual individual, Maze maze) {
-    List<Coordinate> path = executeChromosome(individual.chromosome, maze);
+    List<Coordinate> path = getCachedOrExecutePath(individual, maze);
 
     if (path.isEmpty()) {
       individual.fitness = Double.NEGATIVE_INFINITY;
@@ -264,6 +274,16 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     } else {
       individual.fitness = 1_000_000.0 / (1.0 + distance * 10.0 + pathCost * 0.1);
     }
+  }
+
+  private List<Coordinate> getCachedOrExecutePath(PathIndividual individual, Maze maze) {
+    if (individual.isCacheValid() && individual.cachedPath != null) {
+      return individual.cachedPath;
+    }
+
+    List<Coordinate> path = executeChromosome(individual.chromosome, maze);
+    individual.cachedPath = new ArrayList<>(path);
+    return path;
   }
 
   private double calculateDiversity(List<PathIndividual> population) {
@@ -310,7 +330,10 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     List<PathIndividual> elite = new ArrayList<>();
     for (int i = 0; i < Math.min(count, sorted.size()); i++) {
       PathIndividual original = sorted.get(i);
-      elite.add(new PathIndividual(new ArrayList<>(original.chromosome), original.fitness));
+      List<Coordinate> cachedPath = original.cachedPath != null
+          ? new ArrayList<>(original.cachedPath)
+          : null;
+      elite.add(new PathIndividual(new ArrayList<>(original.chromosome), original.fitness, cachedPath));
     }
     return elite;
   }
@@ -487,10 +510,47 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   private static class PathIndividual {
     List<Direction> chromosome;
     double fitness;
+    List<Coordinate> cachedPath;
+    int chromosomeHash;
 
     PathIndividual(List<Direction> chromosome, double fitness) {
       this.chromosome = chromosome;
       this.fitness = fitness;
+      this.cachedPath = null;
+      this.chromosomeHash = computeChromosomeHash(chromosome);
+    }
+
+    PathIndividual(List<Direction> chromosome, double fitness, List<Coordinate> cachedPath) {
+      this.chromosome = chromosome;
+      this.fitness = fitness;
+      this.cachedPath = cachedPath;
+      this.chromosomeHash = computeChromosomeHash(chromosome);
+    }
+
+    boolean isCacheValid() {
+      return cachedPath != null && chromosomeHash == computeChromosomeHash(chromosome);
+    }
+
+    void invalidateCache() {
+      this.cachedPath = null;
+      this.chromosomeHash = computeChromosomeHash(chromosome);
+    }
+
+    void updateChromosome(List<Direction> newChromosome) {
+      this.chromosome = newChromosome;
+      invalidateCache();
+    }
+
+    private static int computeChromosomeHash(List<Direction> chromosome) {
+      if (chromosome == null || chromosome.isEmpty()) {
+        return 0;
+      }
+      int hash = 1;
+      for (Direction dir : chromosome) {
+        hash = 31 * hash + dir.hashCode();
+      }
+      hash = 31 * hash + chromosome.size();
+      return hash;
     }
   }
 }
