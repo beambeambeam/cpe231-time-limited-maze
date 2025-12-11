@@ -1,6 +1,7 @@
 package cpe231.finalproject.timelimitedmaze.utils;
 
 import cpe231.finalproject.timelimitedmaze.solver.AstarSolver;
+import cpe231.finalproject.timelimitedmaze.solver.DeadEndFillSolver;
 import cpe231.finalproject.timelimitedmaze.solver.GeneticAlgorithmSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
@@ -15,6 +16,7 @@ public final class SolverRegistry {
     return List.of(
         new WallFollowerSolver(WallFollowerSolver.WallSide.LEFT),
         new WallFollowerSolver(WallFollowerSolver.WallSide.RIGHT),
+        new DeadEndFillSolver(),
         new GeneticAlgorithmSolver(),
         new AstarSolver());
   }
