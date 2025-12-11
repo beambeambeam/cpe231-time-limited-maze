@@ -2,15 +2,19 @@ Sawasdekub
 
 to run this program please use ./gradlew run
 
-## Genetic Algorithm Pre-computation
+## Maze GUI
 
-Pre-compute solutions for the genetic algorithm solver on all mazes:
+Launch the interactive Raylib GUI to visualize and run solvers:
 
 ```bash
-./gradlew :app:generic
+./gradlew :app:run
 ```
 
-This will run the GA on all available mazes and display results in a table format. The GA will evolve through multiple generations internally until it finds a solution. Pre-computed solutions are cached in `ga_checkpoints/` and will be used automatically by the GUI solver.
+- Opens with `m100_100.txt` loaded; mazes come from `app/src/main/resources/maze/`.
+- Use the "Select Algorithm..." dropdown to pick a solver; it runs immediately and draws the path plus cost, path length, and execution time.
+- Use the "Select Maze..." dropdown to switch mazes; valid files are highlighted and automatically re-solved when an algorithm is selected.
+- The right panel shows solver stats, legend, and error messages if a maze cannot be solved.
+- Press `Esc` to close the window. macOS first-thread handling is already configured in the Gradle `run` task.
 
 ## Profiler
 
