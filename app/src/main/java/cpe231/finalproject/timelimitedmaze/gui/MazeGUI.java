@@ -99,10 +99,13 @@ public final class MazeGUI {
   }
 
   private void handleMouseInput(Raylib.Vector2 mousePos) {
+    if (solvingInProgress) {
+      return;
+    }
 
     if (Raylib.IsMouseButtonPressed(Raylib.MOUSE_BUTTON_LEFT)) {
-      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen, availableSolvers);
-      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
+      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen, availableSolvers, solvingInProgress);
+      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles, mazeValidityMap, solvingInProgress);
 
       if (algorithmClicked != null) {
         if (algorithmClicked == -1) {
