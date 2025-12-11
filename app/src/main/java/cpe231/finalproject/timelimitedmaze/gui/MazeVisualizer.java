@@ -140,12 +140,24 @@ public final class MazeVisualizer {
 
     DropdownComponent<MazeSolver> algorithmDropdown = new DropdownComponent<>(panelX + 10, algorithmDropdownY,
         solver -> solver.getAlgorithmName());
-    algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
-        dropdownOpen, "Select Algorithm...");
-
     DropdownComponent<String> mazeDropdown = new DropdownComponent<>(panelX + 10, mazeDropdownY, fileName -> fileName);
-    mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, mazeDropdownOpen,
-        "Select Maze...", mazeValidityMap);
+
+    boolean isAlgorithmOpen = dropdownOpen && !mazeDropdownOpen;
+    boolean isMazeOpen = mazeDropdownOpen;
+
+    if (isAlgorithmOpen) {
+      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, false, "Select Maze...", mazeValidityMap);
+      algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
+          true, "Select Algorithm...");
+    } else if (isMazeOpen) {
+      algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
+          false, "Select Algorithm...");
+      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, true, "Select Maze...", mazeValidityMap);
+    } else {
+      algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
+          false, "Select Algorithm...");
+      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, false, "Select Maze...", mazeValidityMap);
+    }
   }
 
   public Integer checkDropdownClick(Raylib.Vector2 mousePos, boolean isOpen, List<MazeSolver> availableSolvers) {
