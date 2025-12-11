@@ -3,7 +3,8 @@ package cpe231.finalproject.timelimitedmaze.solver;
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeCell;
-import java.time.Instant;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.Objects;
 public abstract class MazeSolver {
 
   private final List<String> logs = Collections.synchronizedList(new ArrayList<>());
+  private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
   public final SolverResult solve(Maze maze) {
     Objects.requireNonNull(maze, "maze cannot be null");
@@ -47,7 +49,8 @@ public abstract class MazeSolver {
   protected final void log(String message) {
     Objects.requireNonNull(message, "message cannot be null");
     synchronized (logs) {
-      logs.add(Instant.now() + " - " + message);
+      String timestamp = LocalTime.now().format(TIME_FORMATTER);
+      logs.add(timestamp + " - " + message);
     }
   }
 
