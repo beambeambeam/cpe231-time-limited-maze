@@ -9,11 +9,11 @@ public final class GUIConstants {
 
   public static final int WINDOW_WIDTH = 1200;
   public static final int WINDOW_HEIGHT = 800;
-  public static final int STATS_PANEL_WIDTH = 300;
+  public static final int STATS_PANEL_WIDTH = 500;
   public static final int MAZE_PANEL_WIDTH = WINDOW_WIDTH - STATS_PANEL_WIDTH;
   public static final int MAZE_PANEL_HEIGHT = WINDOW_HEIGHT;
   public static final int PADDING = 20;
-  public static final int DROPDOWN_WIDTH = 250;
+  public static final int DROPDOWN_WIDTH = 360;
   public static final int DROPDOWN_HEIGHT = 30;
   public static final int DROPDOWN_OPTION_HEIGHT = 30;
   public static final int BUTTON_WIDTH = 120;
