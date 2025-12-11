@@ -87,8 +87,7 @@ public final class MazeGUI {
 
     if (Raylib.IsMouseButtonPressed(Raylib.MOUSE_BUTTON_LEFT)) {
       Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen, availableSolvers);
-      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles,
-          mazeValidityMap);
+      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
 
       if (algorithmClicked != null) {
         if (algorithmClicked == -1) {
