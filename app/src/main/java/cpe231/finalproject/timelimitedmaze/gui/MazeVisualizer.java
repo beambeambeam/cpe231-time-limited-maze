@@ -184,12 +184,13 @@ public final class MazeVisualizer {
   public void resetLogScroll() {
     logScrollOffset = 0;
     logFollowTail = true;
-    lastLogCount = logLines.size();
+    lastLogCount = 0;
   }
 
   private void updateLogScroll(float mouseWheelDelta, Raylib.Vector2 mousePos, int x, int y, int width, int height) {
     int maxVisible = Math.max(1, height / LogPanel.LINE_HEIGHT);
-    int maxOffset = Math.max(0, logLines.size() - maxVisible);
+    int wrappedLineCount = LogPanel.calculateWrappedLineCount(logLines, width - 2 * LogPanel.PADDING);
+    int maxOffset = Math.max(0, wrappedLineCount - maxVisible);
 
     Raylib.Rectangle panelRect = com.raylib.Helpers.newRectangle(x, y, width, height);
     boolean mouseOverPanel = Raylib.CheckCollisionPointRec(mousePos, panelRect);
@@ -206,11 +207,11 @@ public final class MazeVisualizer {
       }
     }
 
-    if (logLines.size() > lastLogCount && logFollowTail) {
+    if (wrappedLineCount > lastLogCount && logFollowTail) {
       logScrollOffset = maxOffset;
     }
 
-    lastLogCount = logLines.size();
+    lastLogCount = wrappedLineCount;
   }
 
   private int clamp(int value, int min, int max) {
