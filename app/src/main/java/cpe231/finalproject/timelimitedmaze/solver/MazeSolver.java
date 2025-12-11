@@ -5,16 +5,19 @@ import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeCell;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class MazeSolver {
 
-  private final List<String> logs = new ArrayList<>();
+  private final List<String> logs = Collections.synchronizedList(new ArrayList<>());
 
   public final SolverResult solve(Maze maze) {
     Objects.requireNonNull(maze, "maze cannot be null");
-    logs.clear();
+    synchronized (logs) {
+      logs.clear();
+    }
     log("Starting solve with algorithm: " + getAlgorithmName());
     log("Maze size: " + maze.getHeight() + "x" + maze.getWidth());
     long startTimeNs = System.nanoTime();
@@ -43,11 +46,15 @@ public abstract class MazeSolver {
 
   protected final void log(String message) {
     Objects.requireNonNull(message, "message cannot be null");
-    logs.add(Instant.now() + " - " + message);
+    synchronized (logs) {
+      logs.add(Instant.now() + " - " + message);
+    }
   }
 
   public final List<String> getLogs() {
-    return List.copyOf(logs);
+    synchronized (logs) {
+      return List.copyOf(logs);
+    }
   }
 
   public final int calculatePathCost(Maze maze, List<Coordinate> path) {
