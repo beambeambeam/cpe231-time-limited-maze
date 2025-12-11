@@ -22,22 +22,30 @@ public final class DeadEndFillSolver extends MazeSolver {
     int width = maze.getWidth();
     Coordinate start = maze.getStart();
     Coordinate goal = maze.getGoal();
+    log("Dead-end fill start: " + start + " -> " + goal + " grid " + height + "x" + width);
 
     boolean[][] open = initializeWalkableGrid(maze, height, width);
     ensureEndpointsRemainOpen(open, start, goal);
 
     pruneDeadEnds(open, start, goal);
-    return buildPathThroughOpenCells(open, start, goal);
+    List<Coordinate> path = buildPathThroughOpenCells(open, start, goal);
+    log("Dead-end fill path length " + path.size());
+    return path;
   }
 
   private boolean[][] initializeWalkableGrid(Maze maze, int height, int width) {
     boolean[][] open = new boolean[height][width];
+    int walkable = 0;
     for (int row = 0; row < height; row++) {
       for (int column = 0; column < width; column++) {
         Coordinate coordinate = new Coordinate(row, column);
         open[row][column] = isWalkable(maze, coordinate);
+        if (open[row][column]) {
+          walkable++;
+        }
       }
     }
+    log("Dead-end fill walkable cells detected: " + walkable);
     return open;
   }
 
@@ -60,6 +68,7 @@ public final class DeadEndFillSolver extends MazeSolver {
       }
     }
 
+    int pruned = 0;
     while (!candidates.isEmpty()) {
       Coordinate current = candidates.removeFirst();
       if (current.equals(start) || current.equals(goal)) {
@@ -71,6 +80,7 @@ public final class DeadEndFillSolver extends MazeSolver {
 
       if (countOpenNeighbors(open, current) <= 1) {
         open[current.row()][current.column()] = false;
+        pruned++;
         for (Direction direction : Direction.values()) {
           Coordinate neighbor = move(current, direction);
           if (isWithinGrid(neighbor, height, width)
@@ -80,6 +90,7 @@ public final class DeadEndFillSolver extends MazeSolver {
         }
       }
     }
+    log("Dead-end fill pruned cells: " + pruned);
   }
 
   private boolean isCandidateDeadEnd(boolean[][] open, Coordinate coordinate,
@@ -145,6 +156,7 @@ public final class DeadEndFillSolver extends MazeSolver {
     for (int index = path.size() - 1; index >= 0; index--) {
       orderedPath.add(path.get(index));
     }
+    log("Dead-end fill reconstructed path of length " + orderedPath.size());
     return orderedPath;
   }
 
