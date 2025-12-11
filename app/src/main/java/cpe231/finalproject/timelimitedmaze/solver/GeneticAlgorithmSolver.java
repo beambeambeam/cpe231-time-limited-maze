@@ -83,6 +83,15 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       double diversity = calculateDiversity(population);
       double mutationRate = adaptiveMutationRate(diversity, generation, adaptiveMaxGen);
 
+      if (generation % 10 == 0) {
+        int bestPathLength = currentBest.path.size();
+        int distanceToGoal = manhattanDistance(currentBest.path.getLast(), maze.getGoal());
+        int bestPathCost = calculatePathCost(maze, currentBest.path);
+        log("GA generation " + generation + " best path length " + bestPathLength
+            + " distance to goal " + distanceToGoal + " cost " + bestPathCost
+            + " diversity " + String.format("%.3f", diversity) + " mutation " + String.format("%.3f", mutationRate));
+      }
+
       int eliteCount = Math.max(2, (int) (adaptivePopSize * ELITE_PERCENTAGE));
       List<PathIndividual> elite = getElite(population, eliteCount);
 
