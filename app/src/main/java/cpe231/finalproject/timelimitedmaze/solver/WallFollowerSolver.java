@@ -32,12 +32,15 @@ public final class WallFollowerSolver extends MazeSolver {
     Direction direction = findInitialDirection(maze, current);
     List<Coordinate> path = new ArrayList<>();
     path.add(current);
+    log("Wall follower (" + wallSide + ") start at " + current + " heading " + direction);
 
     if (current.equals(maze.getGoal())) {
+      log("Wall follower start already at goal");
       return path;
     }
 
     int maxSteps = Math.max(maze.getWidth() * maze.getHeight() * STEP_MULTIPLIER, 1);
+    log("Wall follower max steps: " + maxSteps);
 
     for (int step = 0; step < maxSteps; step++) {
       Direction preferredDirection = getPreferredDirection(direction);
@@ -69,10 +72,12 @@ public final class WallFollowerSolver extends MazeSolver {
       }
 
       if (current.equals(maze.getGoal())) {
+        log("Wall follower reached goal in steps: " + (step + 1) + " path length " + path.size());
         return path;
       }
     }
 
+    log("Wall follower exceeded step limit without reaching goal");
     throw new MazeSolvingException("Wall follower failed to reach the goal within step limit");
   }
 

@@ -10,6 +10,7 @@ import cpe231.finalproject.timelimitedmaze.utils.MazeValidator;
 import cpe231.finalproject.timelimitedmaze.utils.SolverRegistry;
 import com.raylib.Raylib;
 import com.raylib.Helpers;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -19,13 +20,18 @@ public final class MazeGUI {
   private final MazeVisualizer visualizer;
   private List<MazeSolver> availableSolvers;
   private Integer selectedSolverIndex;
-  private SolverResult result;
+  private volatile SolverResult result;
   private boolean dropdownOpen;
-  private String errorMessage;
+  private volatile String errorMessage;
   private String selectedMazeFileName;
   private boolean mazeDropdownOpen;
   private List<String> availableMazeFiles;
   private Map<String, Boolean> mazeValidityMap;
+  private MazeSolver activeSolver;
+  private Thread solveThread;
+  private volatile boolean solvingInProgress;
+  private List<String> solverLogs;
+  private String activeSolverName;
 
   public MazeGUI(Maze maze) {
     this.maze = maze;
@@ -39,6 +45,11 @@ public final class MazeGUI {
     this.mazeDropdownOpen = false;
     this.availableMazeFiles = MazeFileLister.listMazeFiles();
     this.mazeValidityMap = new HashMap<>();
+    this.activeSolver = null;
+    this.solveThread = null;
+    this.solvingInProgress = false;
+    this.solverLogs = new ArrayList<>();
+    this.activeSolverName = null;
     for (String fileName : availableMazeFiles) {
       mazeValidityMap.put(fileName, MazeValidator.isValidMaze(fileName));
     }
@@ -67,13 +78,18 @@ public final class MazeGUI {
         break;
       }
 
-      handleMouseInput();
+      Raylib.Vector2 mousePos = Raylib.GetMousePosition();
+      float mouseWheel = Raylib.GetMouseWheelMove();
+
+      handleMouseInput(mousePos);
+      updateSolverLogs();
 
       Raylib.BeginDrawing();
       Raylib.ClearBackground(Helpers.newColor((byte) 20, (byte) 20, (byte) 20, (byte) 255));
 
       visualizer.render(availableSolvers, selectedSolverIndex, dropdownOpen, result, errorMessage,
-          selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
+          selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap,
+          solverLogs, solvingInProgress, mouseWheel, mousePos, activeSolverName);
 
       Raylib.EndDrawing();
     }
@@ -82,12 +98,14 @@ public final class MazeGUI {
     Raylib.CloseWindow();
   }
 
-  private void handleMouseInput() {
-    Raylib.Vector2 mousePos = Raylib.GetMousePosition();
+  private void handleMouseInput(Raylib.Vector2 mousePos) {
+    if (solvingInProgress) {
+      return;
+    }
 
     if (Raylib.IsMouseButtonPressed(Raylib.MOUSE_BUTTON_LEFT)) {
-      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen, availableSolvers);
-      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
+      Integer algorithmClicked = visualizer.checkDropdownClick(mousePos, dropdownOpen, availableSolvers, solvingInProgress);
+      Integer mazeClicked = visualizer.checkMazeDropdownClick(mousePos, mazeDropdownOpen, availableMazeFiles, mazeValidityMap, solvingInProgress);
 
       if (algorithmClicked != null) {
         if (algorithmClicked == -1) {
@@ -129,11 +147,18 @@ public final class MazeGUI {
       return;
     }
 
+    if (solveThread != null && solveThread.isAlive()) {
+      System.out.println("Solve in progress; waiting to load new maze until current solve completes.");
+      return;
+    }
+
     selectedMazeFileName = fileName;
     maze = MazeStore.getMaze(fileName);
     visualizer.updateMaze(maze);
     result = null;
     errorMessage = null;
+    solverLogs = new ArrayList<>();
+    activeSolverName = null;
 
     if (selectedSolverIndex != null) {
       solveMaze();
@@ -145,13 +170,43 @@ public final class MazeGUI {
       return;
     }
 
+    if (solveThread != null && solveThread.isAlive()) {
+      return;
+    }
+
     errorMessage = null;
-    try {
-      MazeSolver solver = availableSolvers.get(selectedSolverIndex);
-      result = solver.solve(maze);
-    } catch (MazeSolvingException exception) {
-      errorMessage = "Failed to solve maze: " + exception.getMessage();
-      result = null;
+    result = null;
+
+    MazeSolver solver = availableSolvers.get(selectedSolverIndex);
+    activeSolver = solver;
+    activeSolverName = solver.getAlgorithmName();
+    solverLogs = new ArrayList<>();
+    visualizer.resetLogScroll();
+
+    solveThread = new Thread(() -> {
+      try {
+        solvingInProgress = true;
+        SolverResult computed = solver.solve(maze);
+        result = computed;
+      } catch (MazeSolvingException exception) {
+        errorMessage = "Failed to solve maze: " + exception.getMessage();
+        result = null;
+      } catch (Exception exception) {
+        errorMessage = "Unexpected error: " + exception.getMessage();
+        result = null;
+      } finally {
+        solvingInProgress = false;
+      }
+    }, "maze-solver-thread");
+    solveThread.setDaemon(true);
+    solveThread.start();
+  }
+
+  private void updateSolverLogs() {
+    if (activeSolver != null) {
+      solverLogs = activeSolver.getLogs();
+    } else {
+      solverLogs = List.of();
     }
   }
 }

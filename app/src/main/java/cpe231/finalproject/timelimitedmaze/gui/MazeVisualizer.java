@@ -2,12 +2,12 @@ package cpe231.finalproject.timelimitedmaze.gui;
 
 import cpe231.finalproject.timelimitedmaze.gui.components.DropdownComponent;
 import cpe231.finalproject.timelimitedmaze.gui.components.LegendPanel;
+import cpe231.finalproject.timelimitedmaze.gui.components.LogPanel;
 import cpe231.finalproject.timelimitedmaze.gui.components.MazeRenderer;
 import cpe231.finalproject.timelimitedmaze.gui.components.PathRenderer;
 import cpe231.finalproject.timelimitedmaze.gui.components.StartGoalRenderer;
 import cpe231.finalproject.timelimitedmaze.gui.components.StatisticsPanel;
 import cpe231.finalproject.timelimitedmaze.gui.utils.GUIConstants;
-import cpe231.finalproject.timelimitedmaze.gui.utils.TextureManager;
 import cpe231.finalproject.timelimitedmaze.solver.SolverResult;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
@@ -24,21 +24,26 @@ public final class MazeVisualizer {
   @SuppressWarnings("unused")
   private String algorithmName;
   private Set<Coordinate> pathSet;
-  private final TextureManager textureManager;
   private int cellSize;
+  private List<String> logLines = List.of();
+  private int logScrollOffset = 0;
+  private boolean logFollowTail = true;
+  private int lastLogCount = 0;
+  private String solverName;
 
   public MazeVisualizer(Maze maze, SolverResult result, String algorithmName) {
     this.maze = maze;
     this.result = result;
     this.algorithmName = algorithmName;
     this.pathSet = result != null ? new HashSet<>(result.path()) : new HashSet<>();
-    this.textureManager = new TextureManager();
+    this.solverName = algorithmName;
     calculateCellSize();
   }
 
   public void updateResult(SolverResult result, String algorithmName) {
     this.result = result;
     this.algorithmName = algorithmName;
+    this.solverName = algorithmName;
     this.pathSet = result != null ? new HashSet<>(result.path()) : new HashSet<>();
   }
 
@@ -50,7 +55,7 @@ public final class MazeVisualizer {
   }
 
   public void initializeTexture() {
-    textureManager.initialize();
+    // No texture initialization required for log panel.
   }
 
   private void calculateCellSize() {
@@ -69,12 +74,17 @@ public final class MazeVisualizer {
     renderMaze();
     renderPath();
     renderStartAndGoal();
-    renderStatistics(List.of(), null, false, null, null, null, false, List.of(), Map.of());
+    renderStatistics(List.of(), null, false, null, null, null, false, List.of(), Map.of(), false, 0.0f,
+        com.raylib.Helpers.newVector2(0, 0));
   }
 
   public void render(List<MazeSolver> availableSolvers, Integer selectedSolverIndex, boolean dropdownOpen,
       SolverResult currentResult, String errorMessage, String selectedMazeFileName,
-      boolean mazeDropdownOpen, List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap) {
+      boolean mazeDropdownOpen, List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap,
+      List<String> logs, boolean solvingInProgress, float mouseWheelDelta, Raylib.Vector2 mousePos,
+      String solverName) {
+    this.logLines = logs != null ? logs : List.of();
+    this.solverName = solverName;
     if (currentResult != null && currentResult != result) {
       this.result = currentResult;
       this.pathSet = new HashSet<>(currentResult.path());
@@ -86,7 +96,8 @@ public final class MazeVisualizer {
     renderPath();
     renderStartAndGoal();
     renderStatistics(availableSolvers, selectedSolverIndex, dropdownOpen, currentResult, errorMessage,
-        selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap);
+        selectedMazeFileName, mazeDropdownOpen, availableMazeFiles, mazeValidityMap, solvingInProgress,
+        mouseWheelDelta, mousePos);
   }
 
   private void renderMaze() {
@@ -106,7 +117,8 @@ public final class MazeVisualizer {
 
   private void renderStatistics(List<MazeSolver> availableSolvers, Integer selectedSolverIndex, boolean dropdownOpen,
       SolverResult currentResult, String errorMessage, String selectedMazeFileName,
-      boolean mazeDropdownOpen, List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap) {
+      boolean mazeDropdownOpen, List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap,
+      boolean solvingInProgress, float mouseWheelDelta, Raylib.Vector2 mousePos) {
     int panelX = GUIConstants.MAZE_PANEL_WIDTH;
     int panelY = GUIConstants.PADDING;
     int currentY = panelY;
@@ -136,7 +148,16 @@ public final class MazeVisualizer {
     LegendPanel.render(panelX, currentY);
     currentY += LegendPanel.getHeight() + 10;
 
-    textureManager.render(panelX, currentY, 280, 180);
+    int logPanelX = panelX + 10;
+    int logPanelY = currentY;
+    int logPanelWidth = GUIConstants.STATS_PANEL_WIDTH - 20;
+    int logPanelHeight = GUIConstants.WINDOW_HEIGHT - logPanelY - GUIConstants.PADDING;
+    if (logPanelHeight < LogPanel.MIN_HEIGHT) {
+      logPanelHeight = LogPanel.MIN_HEIGHT;
+    }
+    updateLogScroll(mouseWheelDelta, mousePos, logPanelX, logPanelY, logPanelWidth, logPanelHeight);
+    LogPanel.render(logPanelX, logPanelY, logPanelWidth, logPanelHeight, logLines, logScrollOffset,
+        solvingInProgress, solverName, currentResult != null || result != null);
 
     DropdownComponent<MazeSolver> algorithmDropdown = new DropdownComponent<>(panelX + 10, algorithmDropdownY,
         solver -> solver.getAlgorithmName());
@@ -146,39 +167,82 @@ public final class MazeVisualizer {
     boolean isMazeOpen = mazeDropdownOpen;
 
     if (isAlgorithmOpen) {
-      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, false, "Select Maze...", mazeValidityMap);
+      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, false, "Select Maze...", mazeValidityMap, solvingInProgress);
       algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
-          true, "Select Algorithm...");
+          true, "Select Algorithm...", solvingInProgress);
     } else if (isMazeOpen) {
       algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
-          false, "Select Algorithm...");
-      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, true, "Select Maze...", mazeValidityMap);
+          false, "Select Algorithm...", solvingInProgress);
+      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, true, "Select Maze...", mazeValidityMap, solvingInProgress);
     } else {
       algorithmDropdown.render(availableSolvers, selectedSolverIndex != null ? availableSolvers.get(selectedSolverIndex) : null,
-          false, "Select Algorithm...");
-      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, false, "Select Maze...", mazeValidityMap);
+          false, "Select Algorithm...", solvingInProgress);
+      mazeDropdown.renderWithValidityMap(availableMazeFiles, selectedMazeFileName, false, "Select Maze...", mazeValidityMap, solvingInProgress);
     }
   }
 
-  public Integer checkDropdownClick(Raylib.Vector2 mousePos, boolean isOpen, List<MazeSolver> availableSolvers) {
+  public void resetLogScroll() {
+    logScrollOffset = 0;
+    logFollowTail = true;
+    lastLogCount = 0;
+  }
+
+  private void updateLogScroll(float mouseWheelDelta, Raylib.Vector2 mousePos, int x, int y, int width, int height) {
+    int maxVisible = Math.max(1, height / LogPanel.LINE_HEIGHT);
+    int wrappedLineCount = LogPanel.calculateWrappedLineCount(logLines, width - 2 * LogPanel.PADDING);
+    int maxOffset = Math.max(0, wrappedLineCount - maxVisible);
+
+    Raylib.Rectangle panelRect = com.raylib.Helpers.newRectangle(x, y, width, height);
+    boolean mouseOverPanel = Raylib.CheckCollisionPointRec(mousePos, panelRect);
+
+    if (mouseWheelDelta != 0 && mouseOverPanel) {
+      int deltaLines = (int) (-mouseWheelDelta * 3);
+      logScrollOffset = clamp(logScrollOffset + deltaLines, 0, maxOffset);
+      logFollowTail = logScrollOffset == maxOffset;
+    } else {
+      if (logFollowTail) {
+        logScrollOffset = maxOffset;
+      } else if (logScrollOffset > maxOffset) {
+        logScrollOffset = maxOffset;
+      }
+    }
+
+    if (wrappedLineCount > lastLogCount && logFollowTail) {
+      logScrollOffset = maxOffset;
+    }
+
+    lastLogCount = wrappedLineCount;
+  }
+
+  private int clamp(int value, int min, int max) {
+    if (value < min) {
+      return min;
+    }
+    if (value > max) {
+      return max;
+    }
+    return value;
+  }
+
+  public Integer checkDropdownClick(Raylib.Vector2 mousePos, boolean isOpen, List<MazeSolver> availableSolvers, boolean solvingInProgress) {
     int panelX = GUIConstants.MAZE_PANEL_WIDTH;
     int dropdownX = panelX + 10;
     int dropdownY = GUIConstants.PADDING + 30 + 10;
 
     DropdownComponent<MazeSolver> dropdown = new DropdownComponent<>(dropdownX, dropdownY,
         solver -> solver.getAlgorithmName());
-    return dropdown.checkClick(mousePos, availableSolvers, isOpen);
+    return dropdown.checkClick(mousePos, availableSolvers, isOpen, solvingInProgress);
   }
 
   public Integer checkMazeDropdownClick(Raylib.Vector2 mousePos, boolean isOpen,
-      List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap) {
+      List<String> availableMazeFiles, Map<String, Boolean> mazeValidityMap, boolean solvingInProgress) {
     int panelX = GUIConstants.MAZE_PANEL_WIDTH;
     int dropdownX = panelX + 10;
     int algorithmDropdownY = GUIConstants.PADDING + 30 + 10;
     int dropdownY = algorithmDropdownY + GUIConstants.DROPDOWN_HEIGHT + 10;
 
     DropdownComponent<String> dropdown = new DropdownComponent<>(dropdownX, dropdownY, fileName -> fileName);
-    return dropdown.checkClickWithValidityMap(mousePos, availableMazeFiles, isOpen, mazeValidityMap);
+    return dropdown.checkClickWithValidityMap(mousePos, availableMazeFiles, isOpen, mazeValidityMap, solvingInProgress);
   }
 
   public int getWindowWidth() {

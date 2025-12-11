@@ -22,6 +22,7 @@ public class AstarSolver extends MazeSolver {
         int cols = maze.getWidth();
         Coordinate start = maze.getStart();
         Coordinate goal = maze.getGoal();
+    log("A* start: " + start + " -> goal: " + goal + " grid " + rows + "x" + cols);
 
         int startRow = start.row();
         int startCol = start.column();
@@ -56,6 +57,8 @@ public class AstarSolver extends MazeSolver {
         int[] dCol = { 0, 0, 1, -1 };
         double[] dCost = { 1.0, 1.0, 1.0, 1.0 };
 
+    int expansions = 0;
+
         while (!openList.isEmpty()) {
             Node current = openList.poll();
             int r = current.r;
@@ -81,8 +84,8 @@ public class AstarSolver extends MazeSolver {
                 if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
                     int neighborIndex = nr * cols + nc;
 
-                    if (closed[neighborIndex])
-                        continue;
+            if (closed[neighborIndex])
+                continue;
 
                     MazeCell cell = grid.get(nr).get(nc);
                     if (!cell.isWalkable())
@@ -101,8 +104,10 @@ public class AstarSolver extends MazeSolver {
                     }
                 }
             }
+            expansions++;
         }
 
+        log("A* exhausted search after expanding " + expansions + " nodes with no path");
         return new ArrayList<>();
     }
 
@@ -121,6 +126,7 @@ public class AstarSolver extends MazeSolver {
             currIndex = parent[currIndex];
         }
         Collections.reverse(path);
+        log("A* reconstructed path of length " + path.size());
         return path;
     }
 

@@ -59,6 +59,9 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     int adaptivePopSize = Math.max(populationSize, (int) Math.sqrt(mazeSize) * 2);
     int adaptiveMaxGen = Math.max(maxGenerations, (int) Math.sqrt(mazeSize) * 3);
     int maxPathLength = (maze.getWidth() + maze.getHeight()) * 2;
+    log("GA start grid " + maze.getHeight() + "x" + maze.getWidth()
+        + " pop " + adaptivePopSize + " generations " + adaptiveMaxGen
+        + " maxPathLength " + maxPathLength);
 
     List<PathIndividual> population = initializePopulation(maze, maxPathLength, adaptivePopSize);
     PathIndividual bestEver = null;
@@ -73,11 +76,21 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
       if (reachesGoal(currentBest.path, maze)) {
         List<Coordinate> optimized = localSearchOptimize(currentBest.path, maze);
+        log("GA found goal at generation " + generation + " path length " + optimized.size());
         return optimized;
       }
 
       double diversity = calculateDiversity(population);
       double mutationRate = adaptiveMutationRate(diversity, generation, adaptiveMaxGen);
+
+      if (generation % 10 == 0) {
+        int bestPathLength = currentBest.path.size();
+        int distanceToGoal = manhattanDistance(currentBest.path.getLast(), maze.getGoal());
+        int bestPathCost = calculatePathCost(maze, currentBest.path);
+        log("GA generation " + generation + " best path length " + bestPathLength
+            + " distance to goal " + distanceToGoal + " cost " + bestPathCost
+            + " diversity " + String.format("%.3f", diversity) + " mutation " + String.format("%.3f", mutationRate));
+      }
 
       int eliteCount = Math.max(2, (int) (adaptivePopSize * ELITE_PERCENTAGE));
       List<PathIndividual> elite = getElite(population, eliteCount);
@@ -123,11 +136,15 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     if (!reachesGoal(solution, maze)) {
       solution = findPathAStar(maze, maze.getStart(), maze.getGoal());
       if (solution == null || !reachesGoal(solution, maze)) {
+        log("GA failed to reach goal; fallback A* also failed");
         throw new MazeSolvingException("Genetic algorithm failed to find a solution");
       }
+      log("GA used fallback A* path length " + solution.size());
     }
 
-    return localSearchOptimize(solution, maze);
+    List<Coordinate> optimized = localSearchOptimize(solution, maze);
+    log("GA final optimized path length " + optimized.size());
+    return optimized;
   }
 
   private List<PathIndividual> initializePopulation(Maze maze, int maxLength, int popSize) {

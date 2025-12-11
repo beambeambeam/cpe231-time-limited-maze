@@ -27,6 +27,10 @@ public final class DropdownComponent<T> {
   }
 
   public void render(List<T> options, T selectedOption, boolean isOpen, String placeholder) {
+    render(options, selectedOption, isOpen, placeholder, false);
+  }
+
+  public void render(List<T> options, T selectedOption, boolean isOpen, String placeholder, boolean disabled) {
     Raylib.Vector2 mousePos = Raylib.GetMousePosition();
 
     String displayText = selectedOption != null
@@ -35,30 +39,34 @@ public final class DropdownComponent<T> {
 
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, GUIConstants.DROPDOWN_WIDTH, GUIConstants.DROPDOWN_HEIGHT);
 
+    Raylib.Color backgroundColor = disabled ? GUIConstants.DROPDOWN_DISABLED_COLOR : GUIConstants.DROPDOWN_BACKGROUND_COLOR;
+    Raylib.Color borderColor = disabled ? GUIConstants.DROPDOWN_DISABLED_TEXT_COLOR : GUIConstants.DROPDOWN_BORDER_COLOR;
+    Raylib.Color textColor = disabled ? GUIConstants.DROPDOWN_DISABLED_TEXT_COLOR : Colors.WHITE;
+
     Raylib.DrawRectangle((int) dropdownRect.x(), (int) dropdownRect.y(),
         (int) dropdownRect.width(), (int) dropdownRect.height(),
-        GUIConstants.DROPDOWN_BACKGROUND_COLOR);
+        backgroundColor);
     Raylib.DrawRectangleLines((int) dropdownRect.x(), (int) dropdownRect.y(),
         (int) dropdownRect.width(), (int) dropdownRect.height(),
-        GUIConstants.DROPDOWN_BORDER_COLOR);
+        borderColor);
 
-    Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.WHITE);
+    Raylib.DrawText(displayText, x + 5, y + 6, 16, textColor);
 
     int arrowX = x + GUIConstants.DROPDOWN_WIDTH - 20;
     int arrowY = y + GUIConstants.DROPDOWN_HEIGHT / 2;
-    if (isOpen) {
+    if (isOpen && !disabled) {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY - 5),
           Helpers.newVector2(arrowX + 10, arrowY - 5),
           Helpers.newVector2(arrowX + 5, arrowY + 5),
-          GUIConstants.DROPDOWN_BORDER_COLOR);
+          borderColor);
     } else {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY + 5),
           Helpers.newVector2(arrowX + 10, arrowY + 5),
           Helpers.newVector2(arrowX + 5, arrowY - 5),
-          GUIConstants.DROPDOWN_BORDER_COLOR);
+          borderColor);
     }
 
-    if (isOpen) {
+    if (isOpen && !disabled) {
       List<T> validOptions = options.stream()
           .filter(optionFilter)
           .toList();
@@ -91,6 +99,11 @@ public final class DropdownComponent<T> {
 
   public void renderWithValidityMap(List<T> options, T selectedOption, boolean isOpen, String placeholder,
       Map<T, Boolean> validityMap) {
+    renderWithValidityMap(options, selectedOption, isOpen, placeholder, validityMap, false);
+  }
+
+  public void renderWithValidityMap(List<T> options, T selectedOption, boolean isOpen, String placeholder,
+      Map<T, Boolean> validityMap, boolean disabled) {
     Raylib.Vector2 mousePos = Raylib.GetMousePosition();
 
     String displayText = selectedOption != null
@@ -99,30 +112,34 @@ public final class DropdownComponent<T> {
 
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, GUIConstants.DROPDOWN_WIDTH, GUIConstants.DROPDOWN_HEIGHT);
 
+    Raylib.Color backgroundColor = disabled ? GUIConstants.DROPDOWN_DISABLED_COLOR : GUIConstants.DROPDOWN_BACKGROUND_COLOR;
+    Raylib.Color borderColor = disabled ? GUIConstants.DROPDOWN_DISABLED_TEXT_COLOR : GUIConstants.DROPDOWN_BORDER_COLOR;
+    Raylib.Color textColor = disabled ? GUIConstants.DROPDOWN_DISABLED_TEXT_COLOR : Colors.WHITE;
+
     Raylib.DrawRectangle((int) dropdownRect.x(), (int) dropdownRect.y(),
         (int) dropdownRect.width(), (int) dropdownRect.height(),
-        GUIConstants.DROPDOWN_BACKGROUND_COLOR);
+        backgroundColor);
     Raylib.DrawRectangleLines((int) dropdownRect.x(), (int) dropdownRect.y(),
         (int) dropdownRect.width(), (int) dropdownRect.height(),
-        GUIConstants.DROPDOWN_BORDER_COLOR);
+        borderColor);
 
-    Raylib.DrawText(displayText, x + 5, y + 6, 16, Colors.WHITE);
+    Raylib.DrawText(displayText, x + 5, y + 6, 16, textColor);
 
     int arrowX = x + GUIConstants.DROPDOWN_WIDTH - 20;
     int arrowY = y + GUIConstants.DROPDOWN_HEIGHT / 2;
-    if (isOpen) {
+    if (isOpen && !disabled) {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY - 5),
           Helpers.newVector2(arrowX + 10, arrowY - 5),
           Helpers.newVector2(arrowX + 5, arrowY + 5),
-          GUIConstants.DROPDOWN_BORDER_COLOR);
+          borderColor);
     } else {
       Raylib.DrawTriangle(Helpers.newVector2(arrowX, arrowY + 5),
           Helpers.newVector2(arrowX + 10, arrowY + 5),
           Helpers.newVector2(arrowX + 5, arrowY - 5),
-          GUIConstants.DROPDOWN_BORDER_COLOR);
+          borderColor);
     }
 
-    if (isOpen) {
+    if (isOpen && !disabled) {
       int totalOptionsHeight = options.size() * GUIConstants.DROPDOWN_OPTION_HEIGHT;
       int optionsStartY = y + GUIConstants.DROPDOWN_HEIGHT;
 
@@ -158,6 +175,14 @@ public final class DropdownComponent<T> {
   }
 
   public Integer checkClick(Raylib.Vector2 mousePos, List<T> options, boolean isOpen) {
+    return checkClick(mousePos, options, isOpen, false);
+  }
+
+  public Integer checkClick(Raylib.Vector2 mousePos, List<T> options, boolean isOpen, boolean disabled) {
+    if (disabled) {
+      return null;
+    }
+
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, GUIConstants.DROPDOWN_WIDTH, GUIConstants.DROPDOWN_HEIGHT);
 
     if (Raylib.CheckCollisionPointRec(mousePos, dropdownRect)) {
@@ -186,6 +211,15 @@ public final class DropdownComponent<T> {
 
   public Integer checkClickWithValidityMap(Raylib.Vector2 mousePos, List<T> options, boolean isOpen,
       Map<T, Boolean> validityMap) {
+    return checkClickWithValidityMap(mousePos, options, isOpen, validityMap, false);
+  }
+
+  public Integer checkClickWithValidityMap(Raylib.Vector2 mousePos, List<T> options, boolean isOpen,
+      Map<T, Boolean> validityMap, boolean disabled) {
+    if (disabled) {
+      return null;
+    }
+
     Raylib.Rectangle dropdownRect = Helpers.newRectangle(x, y, GUIConstants.DROPDOWN_WIDTH, GUIConstants.DROPDOWN_HEIGHT);
 
     if (Raylib.CheckCollisionPointRec(mousePos, dropdownRect)) {

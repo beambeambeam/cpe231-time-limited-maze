@@ -3,18 +3,33 @@ package cpe231.finalproject.timelimitedmaze.solver;
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
 import cpe231.finalproject.timelimitedmaze.utils.MazeCell;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class MazeSolver {
 
+  private final List<String> logs = Collections.synchronizedList(new ArrayList<>());
+  private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+
   public final SolverResult solve(Maze maze) {
     Objects.requireNonNull(maze, "maze cannot be null");
+    synchronized (logs) {
+      logs.clear();
+    }
+    log("Starting solve with algorithm: " + getAlgorithmName());
+    log("Maze size: " + maze.getHeight() + "x" + maze.getWidth());
     long startTimeNs = System.nanoTime();
     List<Coordinate> path = executeSolve(maze);
     long endTimeNs = System.nanoTime();
     int totalCost = calculatePathCost(maze, path);
+    log("Path length: " + path.size());
+    log("Path total cost: " + totalCost);
+    double durationMs = (endTimeNs - startTimeNs) / 1_000_000.0;
+    log("Solve completed in " + durationMs + " ms");
     return new SolverResult(List.copyOf(path), totalCost, startTimeNs, endTimeNs);
   }
 
@@ -29,6 +44,20 @@ public abstract class MazeSolver {
 
   protected final Coordinate move(Coordinate coordinate, Direction direction) {
     return move(coordinate, direction.deltaRow, direction.deltaColumn);
+  }
+
+  protected final void log(String message) {
+    Objects.requireNonNull(message, "message cannot be null");
+    synchronized (logs) {
+      String timestamp = LocalTime.now().format(TIME_FORMATTER);
+      logs.add(timestamp + " " + message);
+    }
+  }
+
+  public final List<String> getLogs() {
+    synchronized (logs) {
+      return List.copyOf(logs);
+    }
   }
 
   public final int calculatePathCost(Maze maze, List<Coordinate> path) {
