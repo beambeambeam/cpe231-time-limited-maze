@@ -2,6 +2,11 @@ package cpe231.finalproject.timelimitedmaze.solver;
 
 import cpe231.finalproject.timelimitedmaze.utils.Coordinate;
 import cpe231.finalproject.timelimitedmaze.utils.Maze;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -29,6 +34,9 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   private final int populationSize;
   private final int maxGenerations;
   private final Random random;
+  private BufferedWriter jsonLogWriter;
+  private boolean isFirstJsonEntry = true;
+  private static final DateTimeFormatter JSON_TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS");
 
   public GeneticAlgorithmSolver() {
     this(BASE_POPULATION_SIZE, BASE_MAX_GENERATIONS, new Random());
@@ -53,50 +61,132 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
   @Override
   protected List<Coordinate> executeSolve(Maze maze) {
+    String logFileName = "ga_log_" + System.currentTimeMillis() + ".json";
+    try {
+      jsonLogWriter = new BufferedWriter(new FileWriter(logFileName));
+      jsonLogWriter.write("[\n");
+      jsonLogWriter.flush();
+      isFirstJsonEntry = true;
+      log("JSON log file created: " + logFileName);
+    } catch (IOException e) {
+      log("Failed to create JSON log file: " + e.getMessage());
+      jsonLogWriter = null;
+    }
+
+    try {
+
     int mazeSize = maze.getWidth() * maze.getHeight();
     int adaptivePopSize = Math.max(populationSize, (int) Math.sqrt(mazeSize) * 2);
     int adaptiveMaxGen = Math.max(maxGenerations, (int) Math.sqrt(mazeSize) * 3);
-    int maxChromosomeLength = (maze.getWidth() + maze.getHeight()) * 2;
+    int maxChromosomeLength = Math.max((maze.getWidth() + maze.getHeight()) * 2, mazeSize / 10);
+
+    logJson("start", "GA start", new JsonBuilder()
+        .add("mazeHeight", maze.getHeight())
+        .add("mazeWidth", maze.getWidth())
+        .add("populationSize", adaptivePopSize)
+        .add("maxGenerations", adaptiveMaxGen)
+        .add("maxChromosomeLength", maxChromosomeLength)
+        .build());
+
     log("GA start grid " + maze.getHeight() + "x" + maze.getWidth()
         + " pop " + adaptivePopSize + " generations " + adaptiveMaxGen
         + " maxChromosomeLength " + maxChromosomeLength);
 
+    logJson("phase", "Initializing population", new JsonBuilder()
+        .add("populationSize", adaptivePopSize)
+        .build());
+
     List<PathIndividual> population = initializePopulation(maze, maxChromosomeLength, adaptivePopSize);
     PathIndividual bestEver = null;
 
-    for (int generation = 0; generation < adaptiveMaxGen; generation++) {
-      evaluateFitness(population, maze);
+    logJson("phase", "Population initialized", new JsonBuilder()
+        .add("actualPopulationSize", population.size())
+        .build());
 
-      PathIndividual currentBest = getBest(population);
-      if (bestEver == null || currentBest.fitness > bestEver.fitness) {
-        List<Coordinate> bestPath = currentBest.cachedPath != null
-            ? new ArrayList<>(currentBest.cachedPath)
-            : executeChromosome(currentBest.chromosome, maze);
-        bestEver = new PathIndividual(new ArrayList<>(currentBest.chromosome), currentBest.fitness, bestPath);
+    for (int generation = 0; generation < adaptiveMaxGen; generation++) {
+      logJson("generation_start", "Generation started", new JsonBuilder()
+          .add("generation", generation)
+          .add("maxGeneration", adaptiveMaxGen)
+          .add("populationSize", population.size())
+          .build());
+
+      if (generation % 10 == 0 || generation == adaptiveMaxGen - 1) {
+        log("GA progress: generation " + generation + "/" + adaptiveMaxGen);
       }
 
+      long fitnessStartTime = System.nanoTime();
+      evaluateFitness(population, maze);
+      long fitnessEndTime = System.nanoTime();
+
+      logJson("fitness_evaluated", "Fitness evaluation completed", new JsonBuilder()
+          .add("generation", generation)
+          .add("durationNs", fitnessEndTime - fitnessStartTime)
+          .build());
+
+      PathIndividual currentBest = getBest(population);
       List<Coordinate> bestPath = getCachedOrExecutePath(currentBest, maze);
-      if (reachesGoal(bestPath, maze)) {
-        log("GA found goal at generation " + generation + " path length " + bestPath.size());
-        return bestPath;
+      int distanceToGoal = bestPath.isEmpty() ? Integer.MAX_VALUE
+          : manhattanDistance(bestPath.getLast(), maze.getGoal());
+      int bestPathCost = bestPath.isEmpty() ? Integer.MAX_VALUE
+          : calculatePathCost(maze, bestPath);
+      boolean reachedGoal = reachesGoal(bestPath, maze);
+
+      logJson("generation_best", "Best individual in generation", new JsonBuilder()
+          .add("generation", generation)
+          .add("fitness", currentBest.fitness)
+          .add("pathLength", bestPath.size())
+          .add("distanceToGoal", distanceToGoal)
+          .add("pathCost", bestPathCost)
+          .add("reachedGoal", reachedGoal)
+          .add("chromosomeLength", currentBest.chromosome.size())
+          .build());
+
+      if (bestEver == null || currentBest.fitness > bestEver.fitness) {
+        List<Coordinate> bestPathCopy = currentBest.cachedPath != null
+            ? new ArrayList<>(currentBest.cachedPath)
+            : executeChromosome(currentBest.chromosome, maze);
+        bestEver = new PathIndividual(new ArrayList<>(currentBest.chromosome), currentBest.fitness, bestPathCopy);
+
+        logJson("best_ever_updated", "Best ever individual updated", new JsonBuilder()
+            .add("generation", generation)
+            .add("fitness", bestEver.fitness)
+            .add("pathLength", bestPathCopy.size())
+            .add("reachedGoal", reachesGoal(bestPathCopy, maze))
+            .build());
+      }
+
+      if (reachedGoal) {
+        log("GA found goal at generation " + generation + " path length " + bestPath.size() + " (continuing to last generation)");
       }
 
       double diversity = calculateDiversity(population);
       double mutationRate = adaptiveMutationRate(diversity, generation, adaptiveMaxGen);
 
+      logJson("generation_stats", "Generation statistics", new JsonBuilder()
+          .add("generation", generation)
+          .add("diversity", diversity)
+          .add("mutationRate", mutationRate)
+          .build());
+
       if (generation % 5 == 0) {
-        int bestPathLength = bestPath.size();
-        int distanceToGoal = bestPath.isEmpty() ? Integer.MAX_VALUE
-            : manhattanDistance(bestPath.getLast(), maze.getGoal());
-        int bestPathCost = bestPath.isEmpty() ? Integer.MAX_VALUE
-            : calculatePathCost(maze, bestPath);
-        log("GA generation " + generation + " best path length " + bestPathLength
+        log("GA generation " + generation + " best path length " + bestPath.size()
             + " distance to goal " + distanceToGoal + " cost " + bestPathCost
             + " diversity " + String.format("%.3f", diversity) + " mutation " + String.format("%.3f", mutationRate));
       }
 
       int eliteCount = Math.max(2, (int) (adaptivePopSize * ELITE_PERCENTAGE));
+
+      logJson("elite_selection_start", "Starting elite selection", new JsonBuilder()
+          .add("generation", generation)
+          .add("eliteCount", eliteCount)
+          .build());
+
       List<PathIndividual> elite = getElite(population, eliteCount);
+
+      logJson("elite_selected", "Elite selected", new JsonBuilder()
+          .add("generation", generation)
+          .add("eliteCount", elite.size())
+          .build());
 
       List<PathIndividual> newPopulation = new ArrayList<>();
       for (PathIndividual eliteIndividual : elite) {
@@ -106,23 +196,102 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
             eliteIndividual.cachedPath != null ? new ArrayList<>(eliteIndividual.cachedPath) : null));
       }
 
-      while (newPopulation.size() < adaptivePopSize) {
+      logJson("crossover_start", "Starting crossover and mutation", new JsonBuilder()
+          .add("generation", generation)
+          .add("currentPopulationSize", newPopulation.size())
+          .add("targetPopulationSize", adaptivePopSize)
+          .build());
+
+      int attempts = 0;
+      int maxAttempts = adaptivePopSize * 10;
+      int emptyChromosomeCount = 0;
+      int crossoverCount = 0;
+      int mutationCount = 0;
+
+      while (newPopulation.size() < adaptivePopSize && attempts < maxAttempts) {
+        attempts++;
         PathIndividual parent1 = selectParent(population);
         PathIndividual parent2 = selectParent(population);
 
         List<Direction> childChromosome = crossoverChromosomes(parent1.chromosome, parent2.chromosome);
+        crossoverCount++;
 
+        childChromosome = trimChromosome(childChromosome, maxChromosomeLength);
+
+        boolean mutated = false;
         if (random.nextDouble() < mutationRate) {
           childChromosome = mutateChromosome(childChromosome, maxChromosomeLength);
+          mutated = true;
+          mutationCount++;
         }
+
+        childChromosome = trimChromosome(childChromosome, maxChromosomeLength);
 
         if (!childChromosome.isEmpty()) {
           PathIndividual child = new PathIndividual(childChromosome, 0.0);
           newPopulation.add(child);
+        } else {
+          emptyChromosomeCount++;
+          if (attempts > adaptivePopSize * 5) {
+            List<Direction> fallbackChromosome = initializeRandomChromosome(maxChromosomeLength);
+            PathIndividual child = new PathIndividual(fallbackChromosome, 0.0);
+            newPopulation.add(child);
+          }
+        }
+
+        if (attempts % 100 == 0) {
+          logJson("crossover_progress", "Crossover progress", new JsonBuilder()
+              .add("generation", generation)
+              .add("attempts", attempts)
+              .add("currentSize", newPopulation.size())
+              .add("targetSize", adaptivePopSize)
+              .add("emptyChromosomes", emptyChromosomeCount)
+              .build());
         }
       }
 
+      if (newPopulation.size() < adaptivePopSize) {
+        logJson("crossover_fallback", "Using fallback to fill population", new JsonBuilder()
+            .add("generation", generation)
+            .add("currentSize", newPopulation.size())
+            .add("targetSize", adaptivePopSize)
+            .add("attempts", attempts)
+            .build());
+
+        while (newPopulation.size() < adaptivePopSize) {
+          List<Direction> fallbackChromosome = initializeRandomChromosome(maxChromosomeLength);
+          PathIndividual child = new PathIndividual(fallbackChromosome, 0.0);
+          newPopulation.add(child);
+        }
+      }
+
+      int maxChromosomeLengthInGen = 0;
+      int avgChromosomeLength = 0;
+      if (!newPopulation.isEmpty()) {
+        for (PathIndividual ind : newPopulation) {
+          maxChromosomeLengthInGen = Math.max(maxChromosomeLengthInGen, ind.chromosome.size());
+          avgChromosomeLength += ind.chromosome.size();
+        }
+        avgChromosomeLength /= newPopulation.size();
+      }
+
+      logJson("crossover_complete", "Crossover and mutation completed", new JsonBuilder()
+          .add("generation", generation)
+          .add("finalPopulationSize", newPopulation.size())
+          .add("totalAttempts", attempts)
+          .add("emptyChromosomes", emptyChromosomeCount)
+          .add("crossovers", crossoverCount)
+          .add("mutations", mutationCount)
+          .add("maxChromosomeLength", maxChromosomeLengthInGen)
+          .add("avgChromosomeLength", avgChromosomeLength)
+          .add("maxAllowedLength", maxChromosomeLength)
+          .build());
+
       population = newPopulation;
+
+      logJson("generation_end", "Generation completed", new JsonBuilder()
+          .add("generation", generation)
+          .build());
     }
 
     evaluateFitness(population, maze);
@@ -150,7 +319,102 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     }
 
     log("GA final path length " + solution.size());
+
+    logJson("complete", "GA solve completed", new JsonBuilder()
+        .add("finalPathLength", solution.size())
+        .add("finalPathCost", calculatePathCost(maze, solution))
+        .add("reachedGoal", true)
+        .build());
+
+    closeJsonLog();
     return solution;
+    } catch (Exception e) {
+      logJson("error", "Exception occurred during solve", new JsonBuilder()
+          .add("error", e.getClass().getSimpleName())
+          .add("message", e.getMessage())
+          .build());
+      closeJsonLog();
+      throw e;
+    }
+  }
+
+  private void logJson(String eventType, String message, String jsonData) {
+    if (jsonLogWriter == null) {
+      return;
+    }
+
+    try {
+      String timestamp = LocalDateTime.now().format(JSON_TIMESTAMP_FORMATTER);
+      String prefix = isFirstJsonEntry ? "" : ",\n";
+      isFirstJsonEntry = false;
+
+      String jsonEntry = String.format(
+          "%s  {\n    \"timestamp\": \"%s\",\n    \"event\": \"%s\",\n    \"message\": \"%s\",\n    \"data\": %s\n  }",
+          prefix, timestamp, eventType, escapeJson(message), jsonData);
+
+      jsonLogWriter.write(jsonEntry);
+      jsonLogWriter.flush();
+    } catch (IOException e) {
+      log("Failed to write JSON log: " + e.getMessage());
+    }
+  }
+
+  private void closeJsonLog() {
+    if (jsonLogWriter != null) {
+      try {
+        jsonLogWriter.write("\n]");
+        jsonLogWriter.close();
+        log("JSON log saved successfully");
+      } catch (IOException e) {
+        log("Failed to close JSON log: " + e.getMessage());
+      } finally {
+        jsonLogWriter = null;
+        isFirstJsonEntry = true;
+      }
+    }
+  }
+
+  private String escapeJson(String str) {
+    return str.replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
+  }
+
+  private static class JsonBuilder {
+    private final StringBuilder sb = new StringBuilder();
+    private boolean first = true;
+
+    JsonBuilder add(String key, Object value) {
+      if (!first) {
+        sb.append(",\n      ");
+      }
+      first = false;
+      sb.append("\"").append(key).append("\": ");
+      if (value instanceof String) {
+        sb.append("\"").append(escapeJson(value.toString())).append("\"");
+      } else if (value instanceof Number) {
+        sb.append(value);
+      } else if (value instanceof Boolean) {
+        sb.append(value);
+      } else {
+        sb.append("\"").append(escapeJson(value.toString())).append("\"");
+      }
+      return this;
+    }
+
+    String build() {
+      return "{\n      " + sb.toString() + "\n    }";
+    }
+
+    private String escapeJson(String str) {
+      return str.replace("\\", "\\\\")
+          .replace("\"", "\\\"")
+          .replace("\n", "\\n")
+          .replace("\r", "\\r")
+          .replace("\t", "\\t");
+    }
   }
 
   private List<PathIndividual> initializePopulation(Maze maze, int maxLength, int popSize) {
@@ -365,31 +629,48 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     }
 
     int crossoverType = random.nextInt(3);
+    List<Direction> result;
 
     switch (crossoverType) {
       case 0 -> {
-        return singlePointCrossover(parent1, parent2);
+        result = singlePointCrossover(parent1, parent2);
       }
       case 1 -> {
-        return multiPointCrossover(parent1, parent2);
+        result = multiPointCrossover(parent1, parent2);
       }
       case 2 -> {
-        return uniformCrossover(parent1, parent2);
+        result = uniformCrossover(parent1, parent2);
       }
       default -> {
-        return singlePointCrossover(parent1, parent2);
+        result = singlePointCrossover(parent1, parent2);
       }
     }
+
+    return result;
+  }
+
+  private List<Direction> trimChromosome(List<Direction> chromosome, int maxLength) {
+    if (chromosome.size() <= maxLength) {
+      return chromosome;
+    }
+    return new ArrayList<>(chromosome.subList(0, maxLength));
   }
 
   private List<Direction> singlePointCrossover(List<Direction> parent1, List<Direction> parent2) {
-    int point1 = random.nextInt(parent1.size());
+    if (parent1.isEmpty() || parent2.isEmpty()) {
+      return parent1.isEmpty() ? new ArrayList<>(parent2) : new ArrayList<>(parent1);
+    }
+
+    int point1 = random.nextInt(parent1.size()) + 1;
     int point2 = random.nextInt(parent2.size());
 
     List<Direction> child = new ArrayList<>();
     child.addAll(parent1.subList(0, point1));
     child.addAll(parent2.subList(point2, parent2.size()));
 
+    if (child.isEmpty()) {
+      return new ArrayList<>(parent1);
+    }
     return child;
   }
 
@@ -464,9 +745,11 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
     switch (mutationType) {
       case 0 -> {
-        int index = random.nextInt(mutated.size());
-        Direction[] directions = Direction.values();
-        mutated.set(index, directions[random.nextInt(directions.length)]);
+        if (!mutated.isEmpty()) {
+          int index = random.nextInt(mutated.size());
+          Direction[] directions = Direction.values();
+          mutated.set(index, directions[random.nextInt(directions.length)]);
+        }
       }
       case 1 -> {
         if (mutated.size() < maxLength) {
@@ -491,6 +774,10 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       }
       default -> {
       }
+    }
+
+    if (mutated.size() > maxLength) {
+      mutated = new ArrayList<>(mutated.subList(0, maxLength));
     }
 
     return mutated;
