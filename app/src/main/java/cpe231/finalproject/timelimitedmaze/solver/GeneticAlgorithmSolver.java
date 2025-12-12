@@ -78,7 +78,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     int mazeSize = maze.getWidth() * maze.getHeight();
     int adaptivePopSize = Math.max(populationSize, (int) Math.sqrt(mazeSize) * 2);
     int adaptiveMaxGen = Math.max(maxGenerations, (int) Math.sqrt(mazeSize) * 3);
-    int maxChromosomeLength = Math.max((maze.getWidth() + maze.getHeight()) * 2, mazeSize / 10);
+    int maxChromosomeLength = Math.max((maze.getWidth() + maze.getHeight()) * 3, mazeSize / 5);
 
     logJson("start", "GA start", new JsonBuilder()
         .add("mazeHeight", maze.getHeight())
@@ -536,7 +536,10 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     if (distance == 0) {
       individual.fitness = 1_000_000.0 - pathCost;
     } else {
-      individual.fitness = 1_000_000.0 / (1.0 + distance * 10.0 + pathCost * 0.1);
+      double distanceReward = 1_000_000.0 / (1.0 + distance * 5.0);
+      double costPenalty = pathCost * 0.05;
+      double lengthBonus = distance < 30 ? (30 - distance) * 1000.0 : 0.0;
+      individual.fitness = distanceReward - costPenalty + lengthBonus;
     }
   }
 
@@ -580,7 +583,11 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   private double adaptiveMutationRate(double diversity, int generation, int maxGen) {
     double diversityFactor = 1.0 - diversity;
     double progressFactor = (double) generation / maxGen;
-    return Math.min(0.5, BASE_MUTATION_RATE + diversityFactor * 0.25 + progressFactor * 0.1);
+    double baseRate = BASE_MUTATION_RATE + diversityFactor * 0.25;
+    if (diversity < 0.3) {
+      baseRate += 0.2;
+    }
+    return Math.min(0.6, baseRate + progressFactor * 0.1);
   }
 
   private PathIndividual getBest(List<PathIndividual> population) {
