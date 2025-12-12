@@ -10,8 +10,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -29,7 +31,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   private static final double ELITE_PERCENTAGE = 0.15;
   private static final double BASE_MUTATION_RATE = 0.15;
   private static final double HEURISTIC_PROBABILITY = 0.7;
-  private static final int TOURNAMENT_SIZE = 5;
+  private static final int TOURNAMENT_SIZE = 7;
 
   private final int populationSize;
   private final int maxGenerations;
@@ -504,7 +506,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     Coordinate current = maze.getStart();
 
     for (int i = 0; i < length; i++) {
-      if (random.nextDouble() < 0.7) {
+      if (random.nextDouble() < 0.75) {
         Direction bestDirection = selectBestDirection(maze, current, goal);
         chromosome.add(bestDirection);
         Coordinate next = move(current, bestDirection);
@@ -540,7 +542,7 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       if (isWalkable(maze, next)) {
         int distance = manhattanDistance(next, goal);
         int cost = stepCost(maze, next);
-        double score = distance * 1.5 + cost * 1.2;
+        double score = distance * 1.3 + cost * 1.4;
         if (score < bestScore) {
           bestScore = score;
           best = dir;
@@ -593,11 +595,22 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
     if (distance == 0) {
       double costRatio = minPossibleCost > 0 ? (double) pathCost / minPossibleCost : 1.0;
-      individual.fitness = 200_000_000.0 - (pathCost * 500.0) - (pathLength * 20.0) - (costRatio * 100_000.0);
+      double costPenalty = pathCost * 800.0;
+      double lengthPenalty = pathLength * 25.0;
+      double ratioPenalty = costRatio * 150_000.0;
+
+      double optimalityBonus = 0.0;
+      if (costRatio <= 1.05) {
+        optimalityBonus = 500_000.0 * (1.05 - costRatio) / 0.05;
+      } else if (costRatio <= 1.10) {
+        optimalityBonus = 200_000.0 * (1.10 - costRatio) / 0.05;
+      }
+
+      individual.fitness = 200_000_000.0 - costPenalty - lengthPenalty - ratioPenalty + optimalityBonus;
     } else {
       double distanceReward = 3_000_000.0 / (1.0 + distance * 1.2);
-      double costPenalty = pathCost * 0.8;
-      double lengthPenalty = pathLength * 0.1;
+      double costPenalty = pathCost * 1.2;
+      double lengthPenalty = pathLength * 0.15;
       double efficiencyBonus = distance < 20 ? (20 - distance) * 8000.0 : 0.0;
       double progressBonus = distance < minPossibleCost * 2 ? (minPossibleCost * 2 - distance) * 200.0 : 0.0;
       individual.fitness = distanceReward - costPenalty - lengthPenalty + efficiencyBonus + progressBonus;
@@ -813,8 +826,10 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
         if (!mutated.isEmpty()) {
           int index = random.nextInt(mutated.size());
           Direction[] directions = Direction.values();
-          if (distanceToGoal < 15 && random.nextDouble() < 0.6) {
-            Direction bestDir = selectBestDirection(maze, executeChromosome(mutated.subList(0, index), maze).getLast(), goal);
+          if (distanceToGoal < 20 && random.nextDouble() < 0.7) {
+            List<Coordinate> partialPath = executeChromosome(mutated.subList(0, index), maze);
+            Coordinate currentPos = partialPath.isEmpty() ? maze.getStart() : partialPath.getLast();
+            Direction bestDir = selectBestDirection(maze, currentPos, goal);
             mutated.set(index, bestDir);
           } else {
             mutated.set(index, directions[random.nextInt(directions.length)]);
@@ -825,8 +840,9 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
         if (mutated.size() < maxLength) {
           int index = random.nextInt(mutated.size() + 1);
           Direction[] directions = Direction.values();
-          if (distanceToGoal < 15 && random.nextDouble() < 0.5) {
-            Coordinate beforePos = index > 0 ? executeChromosome(mutated.subList(0, index), maze).getLast() : maze.getStart();
+          if (distanceToGoal < 20 && random.nextDouble() < 0.6) {
+            List<Coordinate> partialPath = index > 0 ? executeChromosome(mutated.subList(0, index), maze) : new ArrayList<>();
+            Coordinate beforePos = partialPath.isEmpty() ? maze.getStart() : partialPath.getLast();
             Direction bestDir = selectBestDirection(maze, beforePos, goal);
             mutated.add(index, bestDir);
           } else {
@@ -923,11 +939,26 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       return new ArrayList<>(path);
     }
 
+    List<Coordinate> optimized = optimizePathSinglePass(path, maze);
+
+    List<Coordinate> secondPass = optimizePathSinglePass(optimized, maze);
+    if (calculatePathCost(maze, secondPass) < calculatePathCost(maze, optimized)) {
+      optimized = secondPass;
+    }
+
+    return optimized;
+  }
+
+  private List<Coordinate> optimizePathSinglePass(List<Coordinate> path, Maze maze) {
+    if (path.size() < 3) {
+      return new ArrayList<>(path);
+    }
+
     List<Coordinate> result = new ArrayList<>();
     result.add(path.get(0));
 
     int i = 1;
-    int lookAhead = 15;
+    int lookAhead = 25;
 
     while (i < path.size()) {
       Coordinate last = result.get(result.size() - 1);
@@ -941,7 +972,15 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
           continue;
         }
 
-        List<Coordinate> directPath = buildDirectPath(last, candidate, maze);
+        int manhattanDist = manhattanDistance(last, candidate);
+        List<Coordinate> directPath;
+
+        if (manhattanDist <= 10) {
+          directPath = buildAStarPath(last, candidate, maze);
+        } else {
+          directPath = buildDirectPath(last, candidate, maze);
+        }
+
         if (directPath != null && !directPath.isEmpty()) {
           int directCost = calculatePathCost(maze, directPath);
           int originalSegmentCost = 0;
@@ -958,7 +997,15 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
       }
 
       Coordinate target = path.get(bestNextIdx);
-      List<Coordinate> directPath = buildDirectPath(last, target, maze);
+      int manhattanDist = manhattanDistance(last, target);
+      List<Coordinate> directPath;
+
+      if (manhattanDist <= 10) {
+        directPath = buildAStarPath(last, target, maze);
+      } else {
+        directPath = buildDirectPath(last, target, maze);
+      }
+
       if (directPath != null && directPath.size() > 1) {
         for (int k = 1; k < directPath.size(); k++) {
           result.add(directPath.get(k));
@@ -1001,6 +1048,76 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     }
 
     return result;
+  }
+
+  private List<Coordinate> buildAStarPath(Coordinate start, Coordinate end, Maze maze) {
+    if (start.equals(end)) {
+      List<Coordinate> result = new ArrayList<>();
+      result.add(start);
+      return result;
+    }
+
+    int maxNodes = 200;
+    List<Coordinate> openSet = new ArrayList<>();
+    Set<Coordinate> closedSet = new HashSet<>();
+    Map<Coordinate, Coordinate> cameFrom = new HashMap<>();
+    Map<Coordinate, Double> gScore = new HashMap<>();
+    Map<Coordinate, Double> fScore = new HashMap<>();
+
+    openSet.add(start);
+    gScore.put(start, 0.0);
+    fScore.put(start, (double) manhattanDistance(start, end));
+
+    while (!openSet.isEmpty() && closedSet.size() < maxNodes) {
+      Coordinate current = null;
+      double minF = Double.MAX_VALUE;
+      for (Coordinate coord : openSet) {
+        double f = fScore.getOrDefault(coord, Double.MAX_VALUE);
+        if (f < minF) {
+          minF = f;
+          current = coord;
+        }
+      }
+
+      if (current == null) {
+        break;
+      }
+
+      if (current.equals(end)) {
+        List<Coordinate> path = new ArrayList<>();
+        Coordinate pathNode = current;
+        while (pathNode != null) {
+          path.add(pathNode);
+          pathNode = cameFrom.get(pathNode);
+        }
+        Collections.reverse(path);
+        return path;
+      }
+
+      openSet.remove(current);
+      closedSet.add(current);
+
+      for (Direction dir : Direction.values()) {
+        Coordinate neighbor = move(current, dir);
+        if (!isWalkable(maze, neighbor) || closedSet.contains(neighbor)) {
+          continue;
+        }
+
+        double tentativeG = gScore.get(current) + stepCost(maze, neighbor);
+
+        if (!openSet.contains(neighbor)) {
+          openSet.add(neighbor);
+        } else if (tentativeG >= gScore.getOrDefault(neighbor, Double.MAX_VALUE)) {
+          continue;
+        }
+
+        cameFrom.put(neighbor, current);
+        gScore.put(neighbor, tentativeG);
+        fScore.put(neighbor, tentativeG + manhattanDistance(neighbor, end));
+      }
+    }
+
+    return null;
   }
 
   private List<Coordinate> buildDirectPath(Coordinate start, Coordinate end, Maze maze) {
