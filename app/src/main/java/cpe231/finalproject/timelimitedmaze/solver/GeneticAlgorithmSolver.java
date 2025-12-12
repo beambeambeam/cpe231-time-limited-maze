@@ -76,9 +76,9 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
     try {
 
     int mazeSize = maze.getWidth() * maze.getHeight();
-    int adaptivePopSize = Math.max(populationSize, (int) Math.sqrt(mazeSize) * 2);
-    int adaptiveMaxGen = Math.max(maxGenerations, (int) Math.sqrt(mazeSize) * 3);
-    int maxChromosomeLength = Math.max((maze.getWidth() + maze.getHeight()) * 3, mazeSize / 5);
+    int adaptivePopSize = Math.max(populationSize, (int) Math.sqrt(mazeSize) * 3);
+    int adaptiveMaxGen = Math.max(maxGenerations, (int) Math.sqrt(mazeSize) * 5);
+    int maxChromosomeLength = Math.max((maze.getWidth() + maze.getHeight()) * 4, mazeSize / 3);
 
     logJson("start", "GA start", new JsonBuilder()
         .add("mazeHeight", maze.getHeight())
@@ -157,15 +157,34 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
       if (reachedGoal) {
         log("GA found goal at generation " + generation + " path length " + bestPath.size() + " (continuing to last generation)");
+      } else if (distanceToGoal <= 5 && generation > adaptiveMaxGen * 0.8) {
+        List<Coordinate> extendedPath = extendPathToGoal(bestPath, maze, maxChromosomeLength);
+        if (reachesGoal(extendedPath, maze)) {
+          log("GA extended path to goal at generation " + generation + " extended path length " + extendedPath.size());
+          logJson("path_extended", "Path extended to goal", new JsonBuilder()
+              .add("generation", generation)
+              .add("originalLength", bestPath.size())
+              .add("extendedLength", extendedPath.size())
+              .build());
+          bestEver = new PathIndividual(
+              new ArrayList<>(currentBest.chromosome),
+              currentBest.fitness + 1000000.0,
+              extendedPath);
+        }
       }
 
       double diversity = calculateDiversity(population);
       double mutationRate = adaptiveMutationRate(diversity, generation, adaptiveMaxGen);
 
+      if (distanceToGoal > 0 && distanceToGoal < 10 && generation > adaptiveMaxGen * 0.7) {
+        mutationRate = Math.min(0.7, mutationRate + 0.2);
+      }
+
       logJson("generation_stats", "Generation statistics", new JsonBuilder()
           .add("generation", generation)
           .add("diversity", diversity)
           .add("mutationRate", mutationRate)
+          .add("distanceToGoal", distanceToGoal)
           .build());
 
       if (generation % 5 == 0) {
@@ -314,6 +333,19 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
         + " diversity " + String.format("%.3f", finalDiversity) + " mutation " + String.format("%.3f", finalMutationRate));
 
     if (!reachesGoal(solution, maze)) {
+      log("GA failed to reach goal after " + adaptiveMaxGen + " generations, attempting path extension");
+      List<Coordinate> extendedPath = extendPathToGoal(solution, maze, maxChromosomeLength);
+      if (reachesGoal(extendedPath, maze)) {
+        log("Path extension successful, final path length " + extendedPath.size());
+        logJson("complete", "GA solve completed with path extension", new JsonBuilder()
+            .add("finalPathLength", extendedPath.size())
+            .add("finalPathCost", calculatePathCost(maze, extendedPath))
+            .add("reachedGoal", true)
+            .add("usedExtension", true)
+            .build());
+        closeJsonLog();
+        return extendedPath;
+      }
       log("GA failed to reach goal after " + adaptiveMaxGen + " generations");
       throw new MazeSolvingException("Genetic algorithm failed to find a solution");
     }
@@ -435,7 +467,8 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   }
 
   private List<Direction> initializeRandomChromosome(int maxLength) {
-    int length = random.nextInt(maxLength / 2) + maxLength / 4;
+    int minLength = Math.max(maxLength / 4, 10);
+    int length = random.nextInt(maxLength - minLength + 1) + minLength;
     List<Direction> chromosome = new ArrayList<>();
     Direction[] directions = Direction.values();
 
@@ -447,19 +480,23 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
   }
 
   private List<Direction> initializeHeuristicChromosome(Maze maze, int maxLength) {
-    int length = random.nextInt(maxLength / 2) + maxLength / 4;
+    int minLength = Math.max(maxLength / 4, 10);
+    int length = random.nextInt(maxLength - minLength + 1) + minLength;
     List<Direction> chromosome = new ArrayList<>();
     Direction[] directions = Direction.values();
     Coordinate goal = maze.getGoal();
     Coordinate current = maze.getStart();
 
     for (int i = 0; i < length; i++) {
-      if (random.nextDouble() < 0.6) {
+      if (random.nextDouble() < 0.7) {
         Direction bestDirection = selectBestDirection(maze, current, goal);
         chromosome.add(bestDirection);
         Coordinate next = move(current, bestDirection);
         if (isWalkable(maze, next)) {
           current = next;
+          if (current.equals(goal)) {
+            break;
+          }
         }
       } else {
         Direction randomDir = directions[random.nextInt(directions.length)];
@@ -467,6 +504,9 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
         Coordinate next = move(current, randomDir);
         if (isWalkable(maze, next)) {
           current = next;
+          if (current.equals(goal)) {
+            break;
+          }
         }
       }
     }
@@ -799,6 +839,62 @@ public final class GeneticAlgorithmSolver extends MazeSolver {
 
   private int manhattanDistance(Coordinate a, Coordinate b) {
     return Math.abs(a.row() - b.row()) + Math.abs(a.column() - b.column());
+  }
+
+  private List<Coordinate> extendPathToGoal(List<Coordinate> path, Maze maze, int maxLength) {
+    if (path.isEmpty()) {
+      return path;
+    }
+
+    Coordinate current = path.getLast();
+    Coordinate goal = maze.getGoal();
+    List<Coordinate> extended = new ArrayList<>(path);
+    Set<Coordinate> visited = new HashSet<>(path);
+    int maxSteps = Math.min(maxLength - path.size(), 500);
+
+    for (int step = 0; step < maxSteps && !current.equals(goal); step++) {
+      Direction bestDir = null;
+      int bestDistance = Integer.MAX_VALUE;
+
+      for (Direction dir : Direction.values()) {
+        Coordinate next = move(current, dir);
+        if (isWalkable(maze, next) && !visited.contains(next)) {
+          int dist = manhattanDistance(next, goal);
+          if (dist < bestDistance) {
+            bestDistance = dist;
+            bestDir = dir;
+          }
+        }
+      }
+
+      if (bestDir == null) {
+        for (Direction dir : Direction.values()) {
+          Coordinate next = move(current, dir);
+          if (isWalkable(maze, next)) {
+            int dist = manhattanDistance(next, goal);
+            if (dist < bestDistance) {
+              bestDistance = dist;
+              bestDir = dir;
+            }
+          }
+        }
+      }
+
+      if (bestDir != null) {
+        Coordinate next = move(current, bestDir);
+        if (isWalkable(maze, next)) {
+          current = next;
+          extended.add(current);
+          visited.add(current);
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+
+    return extended;
   }
 
   private static class PathIndividual {
