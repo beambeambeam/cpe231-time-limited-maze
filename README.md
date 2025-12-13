@@ -1,7 +1,3 @@
-Sawasdekub
-
-to run this program please use ./gradlew run
-
 ## Maze GUI
 
 Launch the interactive Raylib GUI to visualize and run solvers:
