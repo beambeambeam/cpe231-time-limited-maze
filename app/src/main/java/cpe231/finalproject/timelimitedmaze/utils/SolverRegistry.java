@@ -1,7 +1,11 @@
 package cpe231.finalproject.timelimitedmaze.utils;
 
 import cpe231.finalproject.timelimitedmaze.solver.AstarSolver;
+import cpe231.finalproject.timelimitedmaze.solver.BestFirstSolver;
+import cpe231.finalproject.timelimitedmaze.solver.BFSSolver;
+import cpe231.finalproject.timelimitedmaze.solver.BidirectionalBFSSolver;
 import cpe231.finalproject.timelimitedmaze.solver.DeadEndFillSolver;
+import cpe231.finalproject.timelimitedmaze.solver.DijkstraSolver;
 import cpe231.finalproject.timelimitedmaze.solver.GeneticAlgorithmSolver;
 import cpe231.finalproject.timelimitedmaze.solver.MazeSolver;
 import cpe231.finalproject.timelimitedmaze.solver.WallFollowerSolver;
@@ -18,6 +22,10 @@ public final class SolverRegistry {
         new WallFollowerSolver(WallFollowerSolver.WallSide.RIGHT),
         new DeadEndFillSolver(),
         new GeneticAlgorithmSolver(),
-        new AstarSolver());
+        new AstarSolver(),
+        new DijkstraSolver(),
+        new BFSSolver(),
+        new BidirectionalBFSSolver(),
+        new BestFirstSolver());
   }
 }
